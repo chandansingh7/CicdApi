@@ -34,19 +34,21 @@ jobs:
         path: target/libs/*.jar
         retention-days: 7
 
-  # deploy-azure:
-  #   needs: build-and-test
-  #   runs-on: ubuntu-latest
-  #   if: github.ref == 'refs/heads/main'
-  #   steps:
-  #   - name: Download build artifact
-  #     uses: actions/download-artifact@v4
-  #     with:
-  #       name: pos-application
-  #       path: release
-  #   - name: Deploy to Azure Web App
-  #     uses: azure/webapps-deploy@v3
-  #     with:
-  #       app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
-  #       publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-  #       package: release
+  deploy-azure:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+
+    steps:
+    - name: Download build artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: pos-application
+        path: release
+
+    - name: Deploy to Azure Web App
+      uses: azure/webapps-deploy@v3
+      with:
+        app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
+        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+        package: release

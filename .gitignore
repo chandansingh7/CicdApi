@@ -38,3 +38,6 @@ Thumbs.db
 
 # Run scripts (local execution scripts)
 build.sh
+
+# Azure publish profile (contains secrets - NEVER commit)
+*.PublishSettings
