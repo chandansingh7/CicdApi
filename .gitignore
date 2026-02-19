@@ -41,3 +41,7 @@ build.sh
 
 # Azure publish profile (contains secrets - NEVER commit)
 *.PublishSettings
+
+# Local environment variables (contains secrets - NEVER commit)
+.env
+.env.local
