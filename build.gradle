@@ -1,0 +1,40 @@
+plugins {
+    id 'java'
+    id 'application'
+}
+
+// Use 'target' directory instead of 'build' (Maven convention)
+buildDir = file('target')
+
+group = 'com.pos'
+version = '1.0.0'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // JUnit 5
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.9.2'
+}
+
+test {
+    useJUnitPlatform()
+}
+
+application {
+    mainClass = 'com.pos.POSApplication'
+}
+
+jar {
+    manifest {
+        attributes 'Main-Class': 'com.pos.POSApplication'
+    }
+    archiveBaseName = 'cicdpos'
+    archiveVersion = '1.0.0'
+}
