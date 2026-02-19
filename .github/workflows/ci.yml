@@ -10,6 +10,21 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: ${{ secrets.TEST_DB_NAME }}
+          POSTGRES_USER: ${{ secrets.TEST_DB_USERNAME }}
+          POSTGRES_PASSWORD: ${{ secrets.TEST_DB_PASSWORD }}
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -22,16 +37,21 @@ jobs:
         cache: gradle
 
     - name: Build with Gradle
-      run: ./gradlew clean build
+      run: ./gradlew clean build -x test
 
     - name: Run tests
       run: ./gradlew test
+      env:
+        DATABASE_URL: jdbc:postgresql://localhost:5432/${{ secrets.TEST_DB_NAME }}
+        DATABASE_USERNAME: ${{ secrets.TEST_DB_USERNAME }}
+        DATABASE_PASSWORD: ${{ secrets.TEST_DB_PASSWORD }}
+        JWT_SECRET: ${{ secrets.JWT_SECRET }}
 
     - name: Upload JAR artifact
       uses: actions/upload-artifact@v4
       with:
-        name: pos-application
-        path: target/libs/*.jar
+        name: pos-api
+        path: build/libs/cicdpos-1.0.0.jar
         retention-days: 7
 
   deploy-azure:
@@ -43,7 +63,7 @@ jobs:
     - name: Download build artifact
       uses: actions/download-artifact@v4
       with:
-        name: pos-application
+        name: pos-api
         path: release
 
     - name: Deploy to Azure Web App
