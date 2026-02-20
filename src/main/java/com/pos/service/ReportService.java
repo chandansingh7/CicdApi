@@ -4,6 +4,7 @@ import com.pos.dto.response.SalesReportResponse;
 import com.pos.repository.OrderItemRepository;
 import com.pos.repository.OrderRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
@@ -14,28 +15,31 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ReportService {
 
-    private final OrderRepository orderRepository;
+    private final OrderRepository     orderRepository;
     private final OrderItemRepository orderItemRepository;
 
     public SalesReportResponse getDailySummary(LocalDate date) {
+        log.info("Generating daily sales report for: {}", date);
         LocalDateTime from = date.atStartOfDay();
-        LocalDateTime to = date.plusDays(1).atStartOfDay();
+        LocalDateTime to   = date.plusDays(1).atStartOfDay();
         return buildReport("Daily: " + date, from, to);
     }
 
     public SalesReportResponse getMonthlySummary(int year, int month) {
-        LocalDate start = LocalDate.of(year, month, 1);
-        LocalDateTime from = start.atStartOfDay();
-        LocalDateTime to = start.plusMonths(1).atStartOfDay();
+        log.info("Generating monthly sales report for: {}-{}", year, String.format("%02d", month));
+        LocalDate     start = LocalDate.of(year, month, 1);
+        LocalDateTime from  = start.atStartOfDay();
+        LocalDateTime to    = start.plusMonths(1).atStartOfDay();
         return buildReport("Monthly: " + year + "-" + String.format("%02d", month), from, to);
     }
 
     private SalesReportResponse buildReport(String period, LocalDateTime from, LocalDateTime to) {
-        long totalOrders = orderRepository.countCompletedBetween(from, to);
+        long       totalOrders  = orderRepository.countCompletedBetween(from, to);
         BigDecimal totalRevenue = orderRepository.sumTotalBetween(from, to);
         if (totalRevenue == null) totalRevenue = BigDecimal.ZERO;
 
@@ -51,6 +55,9 @@ public class ReportService {
                         .unitsSold(((Number) row[2]).longValue())
                         .build())
                 .collect(Collectors.toList());
+
+        log.info("Report '{}': orders={}, revenue={}, avgOrder={}",
+                period, totalOrders, totalRevenue, avgOrder);
 
         return SalesReportResponse.builder()
                 .period(period)

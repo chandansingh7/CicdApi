@@ -37,6 +37,18 @@ public class User implements UserDetails {
     @Builder.Default
     private boolean active = true;
 
+    // ── Extended profile fields ─────────────────────────────────────────────────
+    private String firstName;
+    private String lastName;
+    private String phone;
+
+    @Column(length = 500)
+    private String address;
+
+    @Column(length = 500)
+    private String deliveryAddress;
+
+    // ── Audit ───────────────────────────────────────────────────────────────────
     @Column(updatable = false)
     private LocalDateTime createdAt;
 
@@ -50,8 +62,8 @@ public class User implements UserDetails {
         return List.of(new SimpleGrantedAuthority(role.name()));
     }
 
-    @Override public boolean isAccountNonExpired()    { return true; }
-    @Override public boolean isAccountNonLocked()     { return true; }
-    @Override public boolean isCredentialsNonExpired(){ return true; }
-    @Override public boolean isEnabled()              { return active; }
+    @Override public boolean isAccountNonExpired()     { return true; }
+    @Override public boolean isAccountNonLocked()      { return true; }
+    @Override public boolean isCredentialsNonExpired() { return true; }
+    @Override public boolean isEnabled()               { return active; }
 }

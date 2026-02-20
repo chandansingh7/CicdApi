@@ -79,18 +79,44 @@ class UserServiceTest {
     // ── updateProfile ─────────────────────────────────────────────────────────
 
     @Test
-    @DisplayName("updateProfile saves new email successfully")
+    @DisplayName("updateProfile saves all profile fields successfully")
     void updateProfile_success() {
         when(userRepository.findByUsername("cashier")).thenReturn(Optional.of(cashier));
         when(userRepository.existsByEmail("new@pos.com")).thenReturn(false);
         when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
         UpdateProfileRequest req = new UpdateProfileRequest();
+        req.setFirstName("John");
+        req.setLastName("Doe");
         req.setEmail("new@pos.com");
+        req.setPhone("+1234567890");
+        req.setAddress("123 Main St");
+        req.setDeliveryAddress("456 Oak Ave");
 
         UserResponse result = userService.updateProfile("cashier", req);
 
         assertThat(result.getEmail()).isEqualTo("new@pos.com");
+        assertThat(result.getFirstName()).isEqualTo("John");
+        assertThat(result.getLastName()).isEqualTo("Doe");
+        assertThat(result.getPhone()).isEqualTo("+1234567890");
+        assertThat(result.getAddress()).isEqualTo("123 Main St");
+        assertThat(result.getDeliveryAddress()).isEqualTo("456 Oak Ave");
+    }
+
+    @Test
+    @DisplayName("updateProfile keeps same email without uniqueness error")
+    void updateProfile_sameEmail_noError() {
+        when(userRepository.findByUsername("cashier")).thenReturn(Optional.of(cashier));
+        when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        UpdateProfileRequest req = new UpdateProfileRequest();
+        req.setEmail("cashier@pos.com"); // same email
+        req.setFirstName("Jane");
+
+        UserResponse result = userService.updateProfile("cashier", req);
+
+        assertThat(result.getFirstName()).isEqualTo("Jane");
+        verify(userRepository, never()).existsByEmail("cashier@pos.com");
     }
 
     @Test
@@ -112,14 +138,19 @@ class UserServiceTest {
     // ── adminUpdateUser ───────────────────────────────────────────────────────
 
     @Test
-    @DisplayName("adminUpdateUser updates email, role and active flag")
+    @DisplayName("adminUpdateUser updates all fields including role and active flag")
     void adminUpdateUser_success() {
         when(userRepository.findById(2L)).thenReturn(Optional.of(cashier));
         when(userRepository.existsByEmail("updated@pos.com")).thenReturn(false);
         when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
         AdminUpdateUserRequest req = new AdminUpdateUserRequest();
+        req.setFirstName("Alice");
+        req.setLastName("Smith");
         req.setEmail("updated@pos.com");
+        req.setPhone("+9876543210");
+        req.setAddress("789 Pine Rd");
+        req.setDeliveryAddress("101 Elm Blvd");
         req.setRole(Role.MANAGER);
         req.setActive(true);
 
@@ -127,6 +158,9 @@ class UserServiceTest {
 
         assertThat(result.getEmail()).isEqualTo("updated@pos.com");
         assertThat(result.getRole()).isEqualTo(Role.MANAGER);
+        assertThat(result.getFirstName()).isEqualTo("Alice");
+        assertThat(result.getPhone()).isEqualTo("+9876543210");
+        assertThat(result.getDeliveryAddress()).isEqualTo("101 Elm Blvd");
     }
 
     @Test
