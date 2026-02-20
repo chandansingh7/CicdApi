@@ -3,6 +3,7 @@ package com.pos.service;
 import com.pos.dto.request.InventoryUpdateRequest;
 import com.pos.dto.response.InventoryResponse;
 import com.pos.entity.Inventory;
+import com.pos.exception.ErrorCode;
 import com.pos.exception.ResourceNotFoundException;
 import com.pos.repository.InventoryRepository;
 import com.pos.repository.ProductRepository;
@@ -31,7 +32,7 @@ public class InventoryService {
     }
 
     public List<InventoryResponse> getLowStock() {
-        log.debug("Fetching low-stock inventory items");
+        log.debug("Fetching low-stock items");
         List<InventoryResponse> items = inventoryRepository.findLowStockItems().stream()
                 .map(InventoryResponse::from)
                 .collect(Collectors.toList());
@@ -43,29 +44,24 @@ public class InventoryService {
 
     public InventoryResponse getByProductId(Long productId) {
         log.debug("Fetching inventory for product id: {}", productId);
-        Inventory inventory = inventoryRepository.findByProductId(productId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Inventory not found for product: " + productId));
-        return InventoryResponse.from(inventory);
+        return InventoryResponse.from(inventoryRepository.findByProductId(productId)
+                .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.IN001)));
     }
 
     public InventoryResponse updateStock(Long productId, InventoryUpdateRequest request) {
-        log.info("Updating stock for product id: {} — qty: {}, lowStockThreshold: {}",
-                productId, request.getQuantity(), request.getLowStockThreshold());
+        log.info("Updating stock for product id: {} — qty: {}", productId, request.getQuantity());
         if (!productRepository.existsById(productId)) {
-            throw new ResourceNotFoundException("Product", productId);
+            throw new ResourceNotFoundException(ErrorCode.PR001);
         }
         Inventory inventory = inventoryRepository.findByProductId(productId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Inventory not found for product: " + productId));
+                .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.IN001));
 
         int oldQty = inventory.getQuantity();
         inventory.setQuantity(request.getQuantity());
         inventory.setLowStockThreshold(request.getLowStockThreshold());
         inventory.setUpdatedBy(currentUsername());
         InventoryResponse saved = InventoryResponse.from(inventoryRepository.save(inventory));
-        log.info("Stock updated for product id: {} — {} → {}",
-                productId, oldQty, request.getQuantity());
+        log.info("Stock updated for product id: {} — {} → {}", productId, oldQty, request.getQuantity());
         return saved;
     }
 

@@ -1,5 +1,6 @@
 package com.pos.dto.response;
 
+import com.pos.exception.ErrorCode;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -11,8 +12,9 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class ApiResponse<T> {
     private boolean success;
-    private String message;
-    private T data;
+    private String  message;
+    private String  errorCode;   // 5-char code, e.g. "AU004"  — null on success
+    private T       data;
 
     public static <T> ApiResponse<T> ok(T data) {
         return ApiResponse.<T>builder().success(true).data(data).build();
@@ -22,6 +24,23 @@ public class ApiResponse<T> {
         return ApiResponse.<T>builder().success(true).message(message).data(data).build();
     }
 
+    public static <T> ApiResponse<T> error(ErrorCode code) {
+        return ApiResponse.<T>builder()
+                .success(false)
+                .errorCode(code.getCode())
+                .message(code.getMessage())
+                .build();
+    }
+
+    public static <T> ApiResponse<T> error(ErrorCode code, String detail) {
+        return ApiResponse.<T>builder()
+                .success(false)
+                .errorCode(code.getCode())
+                .message(code.getMessage() + ": " + detail)
+                .build();
+    }
+
+    /** Legacy overload — kept for places that pass a raw string message. */
     public static <T> ApiResponse<T> error(String message) {
         return ApiResponse.<T>builder().success(false).message(message).build();
     }

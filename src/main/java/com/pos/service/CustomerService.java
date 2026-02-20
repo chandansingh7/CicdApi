@@ -4,6 +4,7 @@ import com.pos.dto.request.CustomerRequest;
 import com.pos.dto.response.CustomerResponse;
 import com.pos.entity.Customer;
 import com.pos.exception.BadRequestException;
+import com.pos.exception.ErrorCode;
 import com.pos.exception.ResourceNotFoundException;
 import com.pos.repository.CustomerRepository;
 import lombok.RequiredArgsConstructor;
@@ -22,7 +23,7 @@ public class CustomerService {
     private final CustomerRepository customerRepository;
 
     public Page<CustomerResponse> getAll(String search, Pageable pageable) {
-        log.debug("Fetching customers — search: '{}', page: {}", search, pageable.getPageNumber());
+        log.debug("Fetching customers — search: '{}'", search);
         if (search != null && !search.isBlank()) {
             return customerRepository.search(search, pageable).map(CustomerResponse::from);
         }
@@ -35,10 +36,10 @@ public class CustomerService {
     }
 
     public CustomerResponse create(CustomerRequest request) {
-        log.info("Creating customer — name: '{}', email: '{}'", request.getName(), request.getEmail());
+        log.info("Creating customer — name: '{}'", request.getName());
         if (request.getEmail() != null && customerRepository.existsByEmail(request.getEmail())) {
-            log.warn("Customer creation failed — email already registered: {}", request.getEmail());
-            throw new BadRequestException("Email already registered: " + request.getEmail());
+            log.warn("[CM002] Customer email already registered: {}", request.getEmail());
+            throw new BadRequestException(ErrorCode.CM002);
         }
         Customer customer = Customer.builder()
                 .name(request.getName())
@@ -47,7 +48,7 @@ public class CustomerService {
                 .updatedBy(currentUsername())
                 .build();
         CustomerResponse saved = CustomerResponse.from(customerRepository.save(customer));
-        log.info("Customer created — id: {}, name: '{}'", saved.getId(), saved.getName());
+        log.info("Customer created — id: {}", saved.getId());
         return saved;
     }
 
@@ -57,8 +58,8 @@ public class CustomerService {
         if (request.getEmail() != null && !request.getEmail().equals(customer.getEmail())) {
             customerRepository.findByEmail(request.getEmail()).ifPresent(existing -> {
                 if (!existing.getId().equals(id)) {
-                    log.warn("Customer update failed — email already in use: {}", request.getEmail());
-                    throw new BadRequestException("Email already in use: " + request.getEmail());
+                    log.warn("[CM002] Customer email in use: {}", request.getEmail());
+                    throw new BadRequestException(ErrorCode.CM002);
                 }
             });
         }
@@ -66,21 +67,19 @@ public class CustomerService {
         customer.setEmail(request.getEmail());
         customer.setPhone(request.getPhone());
         customer.setUpdatedBy(currentUsername());
-        CustomerResponse saved = CustomerResponse.from(customerRepository.save(customer));
-        log.info("Customer updated — id: {}, name: '{}'", id, request.getName());
-        return saved;
+        log.info("Customer updated — id: {}", id);
+        return CustomerResponse.from(customerRepository.save(customer));
     }
 
     public void delete(Long id) {
         log.info("Deleting customer id: {}", id);
-        Customer customer = findById(id);
-        customerRepository.delete(customer);
+        customerRepository.delete(findById(id));
         log.info("Customer id: {} deleted", id);
     }
 
     private Customer findById(Long id) {
         return customerRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Customer", id));
+                .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.CM001));
     }
 
     private String currentUsername() {

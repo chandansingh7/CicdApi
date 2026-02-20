@@ -5,6 +5,7 @@ import com.pos.dto.request.UpdateProfileRequest;
 import com.pos.dto.response.UserResponse;
 import com.pos.entity.User;
 import com.pos.exception.BadRequestException;
+import com.pos.exception.ErrorCode;
 import com.pos.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -39,8 +40,8 @@ public class UserService {
 
         if (!user.getEmail().equals(request.getEmail())
                 && userRepository.existsByEmail(request.getEmail())) {
-            log.warn("Profile update failed — email already in use: {}", request.getEmail());
-            throw new BadRequestException("Email already in use: " + request.getEmail());
+            log.warn("[US003] Profile update failed — email in use: {}", request.getEmail());
+            throw new BadRequestException(ErrorCode.US003);
         }
 
         user.setFirstName(request.getFirstName());
@@ -60,13 +61,13 @@ public class UserService {
         User user = findById(id);
 
         if (user.getUsername().equals(currentUsername) && !request.isActive()) {
-            log.warn("Admin update rejected — cannot deactivate own account: {}", currentUsername);
-            throw new BadRequestException("You cannot deactivate your own account");
+            log.warn("[US004] Admin update rejected — cannot deactivate self: {}", currentUsername);
+            throw new BadRequestException(ErrorCode.US004);
         }
         if (!user.getEmail().equals(request.getEmail())
                 && userRepository.existsByEmail(request.getEmail())) {
-            log.warn("Admin update failed — email already in use: {}", request.getEmail());
-            throw new BadRequestException("Email already in use: " + request.getEmail());
+            log.warn("[US003] Admin update failed — email in use: {}", request.getEmail());
+            throw new BadRequestException(ErrorCode.US003);
         }
 
         user.setFirstName(request.getFirstName());
@@ -84,28 +85,28 @@ public class UserService {
     }
 
     public UserResponse toggleActive(Long id, String currentUsername) {
-        log.info("Admin '{}' toggling active status for user id: {}", currentUsername, id);
+        log.info("Admin '{}' toggling active for user id: {}", currentUsername, id);
         User user = findById(id);
 
         if (user.getUsername().equals(currentUsername)) {
-            log.warn("Toggle active rejected — cannot deactivate own account: {}", currentUsername);
-            throw new BadRequestException("You cannot deactivate your own account");
+            log.warn("[US004] Toggle active rejected — cannot deactivate self: {}", currentUsername);
+            throw new BadRequestException(ErrorCode.US004);
         }
 
         boolean newStatus = !user.isActive();
         user.setActive(newStatus);
         UserResponse saved = UserResponse.from(userRepository.save(user));
-        log.info("User id: {} active status set to: {}", id, newStatus);
+        log.info("User id: {} active set to: {}", id, newStatus);
         return saved;
     }
 
     private User findByUsername(String username) {
         return userRepository.findByUsername(username)
-                .orElseThrow(() -> new BadRequestException("User not found: " + username));
+                .orElseThrow(() -> new BadRequestException(ErrorCode.US001));
     }
 
     private User findById(Long id) {
         return userRepository.findById(id)
-                .orElseThrow(() -> new BadRequestException("User not found with id: " + id));
+                .orElseThrow(() -> new BadRequestException(ErrorCode.US001));
     }
 }

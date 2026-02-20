@@ -6,6 +6,7 @@ import com.pos.entity.Category;
 import com.pos.entity.Inventory;
 import com.pos.entity.Product;
 import com.pos.exception.BadRequestException;
+import com.pos.exception.ErrorCode;
 import com.pos.exception.ResourceNotFoundException;
 import com.pos.repository.CategoryRepository;
 import com.pos.repository.InventoryRepository;
@@ -27,15 +28,13 @@ import java.io.IOException;
 @RequiredArgsConstructor
 public class ProductService {
 
-    private final ProductRepository    productRepository;
-    private final CategoryRepository   categoryRepository;
-    private final InventoryRepository  inventoryRepository;
-    private final ImageStorageService  imageStorageService;
+    private final ProductRepository   productRepository;
+    private final CategoryRepository  categoryRepository;
+    private final InventoryRepository inventoryRepository;
+    private final ImageStorageService imageStorageService;
 
     public Page<ProductResponse> getAll(String search, Long categoryId, Pageable pageable) {
-        log.debug("Fetching products — search: '{}', categoryId: {}, page: {}",
-                search, categoryId, pageable.getPageNumber());
-
+        log.debug("Fetching products — search: '{}', categoryId: {}", search, categoryId);
         if (search != null && !search.isBlank()) {
             return productRepository.searchActive(search, pageable).map(this::toResponse);
         }
@@ -52,28 +51,23 @@ public class ProductService {
 
     public ProductResponse getByBarcode(String barcode) {
         log.debug("Fetching product by barcode: {}", barcode);
-        Product product = productRepository.findByBarcode(barcode)
-                .orElseThrow(() -> new ResourceNotFoundException("Product not found with barcode: " + barcode));
-        return toResponse(product);
+        return toResponse(productRepository.findByBarcode(barcode)
+                .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.PR001, "barcode: " + barcode)));
     }
 
     @Transactional
     public ProductResponse create(ProductRequest request) {
         log.info("Creating product — name: '{}', sku: '{}'", request.getName(), request.getSku());
-
         if (request.getSku() != null && productRepository.existsBySku(request.getSku())) {
-            log.warn("Product creation failed — SKU already exists: {}", request.getSku());
-            throw new BadRequestException("SKU already exists: " + request.getSku());
+            log.warn("[PR002] SKU already exists: {}", request.getSku());
+            throw new BadRequestException(ErrorCode.PR002);
         }
         if (request.getBarcode() != null && productRepository.existsByBarcode(request.getBarcode())) {
-            log.warn("Product creation failed — barcode already exists: {}", request.getBarcode());
-            throw new BadRequestException("Barcode already exists: " + request.getBarcode());
+            log.warn("[PR003] Barcode already exists: {}", request.getBarcode());
+            throw new BadRequestException(ErrorCode.PR003);
         }
 
-        Category category = request.getCategoryId() != null
-                ? categoryRepository.findById(request.getCategoryId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Category", request.getCategoryId()))
-                : null;
+        Category category = resolveCategory(request.getCategoryId());
 
         Product product = Product.builder()
                 .name(request.getName())
@@ -85,18 +79,15 @@ public class ProductService {
                 .active(request.isActive())
                 .updatedBy(currentUsername())
                 .build();
-
         product = productRepository.save(product);
 
-        Inventory inventory = Inventory.builder()
+        inventoryRepository.save(Inventory.builder()
                 .product(product)
                 .quantity(request.getInitialStock())
                 .lowStockThreshold(request.getLowStockThreshold())
-                .build();
-        inventoryRepository.save(inventory);
+                .build());
 
-        log.info("Product created — id: {}, name: '{}', sku: '{}'",
-                product.getId(), product.getName(), product.getSku());
+        log.info("Product created — id: {}, name: '{}'", product.getId(), product.getName());
         return toResponse(product);
     }
 
@@ -107,15 +98,11 @@ public class ProductService {
 
         if (request.getSku() != null && !request.getSku().equals(product.getSku())
                 && productRepository.existsBySku(request.getSku())) {
-            log.warn("Product update failed — SKU already exists: {}", request.getSku());
-            throw new BadRequestException("SKU already exists: " + request.getSku());
+            log.warn("[PR002] SKU already exists: {}", request.getSku());
+            throw new BadRequestException(ErrorCode.PR002);
         }
 
-        Category category = request.getCategoryId() != null
-                ? categoryRepository.findById(request.getCategoryId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Category", request.getCategoryId()))
-                : null;
-
+        Category category = resolveCategory(request.getCategoryId());
         product.setName(request.getName());
         product.setSku(request.getSku());
         product.setBarcode(request.getBarcode());
@@ -127,9 +114,8 @@ public class ProductService {
         product.setActive(request.isActive());
         product.setUpdatedBy(currentUsername());
 
-        ProductResponse saved = toResponse(productRepository.save(product));
-        log.info("Product updated — id: {}, name: '{}'", id, request.getName());
-        return saved;
+        log.info("Product updated — id: {}", id);
+        return toResponse(productRepository.save(product));
     }
 
     public void delete(Long id) {
@@ -137,38 +123,40 @@ public class ProductService {
         Product product = findById(id);
         product.setActive(false);
         productRepository.save(product);
-        log.info("Product id: {} marked inactive", id);
     }
 
     @Transactional
     public ProductResponse uploadImage(Long id, MultipartFile file) {
-        log.info("Uploading image for product id: {}, size: {} bytes", id,
-                file != null ? file.getSize() : 0);
-
+        log.info("Uploading image for product id: {}", id);
         if (file == null || file.isEmpty()) {
-            throw new BadRequestException("Image file is required");
+            throw new BadRequestException(ErrorCode.PR005);
         }
         String contentType = file.getContentType();
         if (contentType == null || !contentType.startsWith("image/")) {
-            throw new BadRequestException("File must be an image (JPEG, PNG, GIF or WebP)");
+            throw new BadRequestException(ErrorCode.PR006);
         }
         Product product = findById(id);
         try {
             String imageUrl = imageStorageService.store(id, file);
             product.setImageUrl(imageUrl);
             product.setUpdatedBy(currentUsername());
-            ProductResponse saved = toResponse(productRepository.save(product));
             log.info("Image uploaded for product id: {} — url: {}", id, imageUrl);
-            return saved;
+            return toResponse(productRepository.save(product));
         } catch (IOException ex) {
-            log.error("Failed to store image for product id: {} — {}", id, ex.getMessage(), ex);
-            throw new RuntimeException("Failed to store image: " + ex.getMessage(), ex);
+            log.error("[SV002] Failed to store image for product id: {}", id, ex);
+            throw new RuntimeException(ErrorCode.SV002.getMessage(), ex);
         }
+    }
+
+    private Category resolveCategory(Long categoryId) {
+        if (categoryId == null) return null;
+        return categoryRepository.findById(categoryId)
+                .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.CT001));
     }
 
     private Product findById(Long id) {
         return productRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Product", id));
+                .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.PR001));
     }
 
     private String currentUsername() {

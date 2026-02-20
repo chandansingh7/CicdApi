@@ -1,0 +1,81 @@
+package com.pos.exception;
+
+/**
+ * Centralised application error codes.
+ *
+ * Format: 2-letter category prefix + 3-digit sequence = 5 characters (e.g. AU001).
+ *
+ * Categories:
+ *   AU – Authentication / Authorisation
+ *   US – User management
+ *   PR – Product
+ *   CT – Category
+ *   CM – Customer
+ *   OR – Order
+ *   IN – Inventory
+ *   VA – Validation
+ *   SV – Server / unexpected
+ */
+public enum ErrorCode {
+
+    // ── Authentication / Authorisation ────────────────────────────────────────
+    AU001("AU001", "Invalid username or password"),
+    AU002("AU002", "Account is disabled"),
+    AU003("AU003", "Session expired, please log in again"),
+    AU004("AU004", "Access denied: you do not have permission to perform this action"),
+    AU005("AU005", "Current password is incorrect"),
+    AU006("AU006", "New password and confirmation do not match"),
+    AU007("AU007", "New password must be different from the current password"),
+
+    // ── User management ───────────────────────────────────────────────────────
+    US001("US001", "User not found"),
+    US002("US002", "Username is already taken"),
+    US003("US003", "Email address is already registered"),
+    US004("US004", "You cannot deactivate your own account"),
+
+    // ── Product ───────────────────────────────────────────────────────────────
+    PR001("PR001", "Product not found"),
+    PR002("PR002", "SKU already exists"),
+    PR003("PR003", "Barcode already exists"),
+    PR004("PR004", "Product is not available for sale"),
+    PR005("PR005", "Image file is required"),
+    PR006("PR006", "File must be an image (JPEG, PNG, GIF or WebP)"),
+
+    // ── Category ──────────────────────────────────────────────────────────────
+    CT001("CT001", "Category not found"),
+    CT002("CT002", "Category name already exists"),
+
+    // ── Customer ──────────────────────────────────────────────────────────────
+    CM001("CM001", "Customer not found"),
+    CM002("CM002", "Email address is already registered for another customer"),
+
+    // ── Order ─────────────────────────────────────────────────────────────────
+    OR001("OR001", "Order not found"),
+    OR002("OR002", "Insufficient stock"),
+    OR003("OR003", "Order is already cancelled"),
+    OR004("OR004", "Cannot cancel a refunded order"),
+
+    // ── Inventory ─────────────────────────────────────────────────────────────
+    IN001("IN001", "Inventory record not found for this product"),
+
+    // ── Validation ────────────────────────────────────────────────────────────
+    VA001("VA001", "One or more fields failed validation"),
+
+    // ── Server / unexpected ───────────────────────────────────────────────────
+    SV001("SV001", "An unexpected server error occurred, please try again"),
+    SV002("SV002", "Failed to store image");
+
+    private final String code;
+    private final String message;
+
+    ErrorCode(String code, String message) {
+        this.code    = code;
+        this.message = message;
+    }
+
+    public String getCode()    { return code; }
+    public String getMessage() { return message; }
+
+    @Override
+    public String toString() { return code + ": " + message; }
+}

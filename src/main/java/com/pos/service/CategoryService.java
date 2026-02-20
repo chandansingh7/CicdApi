@@ -4,6 +4,7 @@ import com.pos.dto.request.CategoryRequest;
 import com.pos.dto.response.CategoryResponse;
 import com.pos.entity.Category;
 import com.pos.exception.BadRequestException;
+import com.pos.exception.ErrorCode;
 import com.pos.exception.ResourceNotFoundException;
 import com.pos.repository.CategoryRepository;
 import lombok.RequiredArgsConstructor;
@@ -37,8 +38,8 @@ public class CategoryService {
     public CategoryResponse create(CategoryRequest request) {
         log.info("Creating category: '{}'", request.getName());
         if (categoryRepository.existsByName(request.getName())) {
-            log.warn("Category creation failed — name already exists: '{}'", request.getName());
-            throw new BadRequestException("Category already exists: " + request.getName());
+            log.warn("[CT002] Category name already exists: '{}'", request.getName());
+            throw new BadRequestException(ErrorCode.CT002);
         }
         Category category = Category.builder()
                 .name(request.getName())
@@ -55,28 +56,26 @@ public class CategoryService {
         Category category = findById(id);
         categoryRepository.findByName(request.getName()).ifPresent(existing -> {
             if (!existing.getId().equals(id)) {
-                log.warn("Category update failed — name already in use: '{}'", request.getName());
-                throw new BadRequestException("Category name already in use: " + request.getName());
+                log.warn("[CT002] Category name in use: '{}'", request.getName());
+                throw new BadRequestException(ErrorCode.CT002);
             }
         });
         category.setName(request.getName());
         category.setDescription(request.getDescription());
         category.setUpdatedBy(currentUsername());
-        CategoryResponse saved = CategoryResponse.from(categoryRepository.save(category));
-        log.info("Category updated — id: {}, name: '{}'", id, request.getName());
-        return saved;
+        log.info("Category updated — id: {}", id);
+        return CategoryResponse.from(categoryRepository.save(category));
     }
 
     public void delete(Long id) {
         log.info("Deleting category id: {}", id);
-        Category category = findById(id);
-        categoryRepository.delete(category);
+        categoryRepository.delete(findById(id));
         log.info("Category id: {} deleted", id);
     }
 
     private Category findById(Long id) {
         return categoryRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Category", id));
+                .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.CT001));
     }
 
     private String currentUsername() {

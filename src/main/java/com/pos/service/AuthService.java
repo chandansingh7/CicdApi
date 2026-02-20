@@ -7,6 +7,7 @@ import com.pos.dto.response.AuthResponse;
 import com.pos.entity.User;
 import com.pos.enums.Role;
 import com.pos.exception.BadRequestException;
+import com.pos.exception.ErrorCode;
 import com.pos.repository.UserRepository;
 import com.pos.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
@@ -46,16 +47,15 @@ public class AuthService {
     }
 
     public AuthResponse register(RegisterRequest request) {
-        log.info("Registering new user: {}, role: {}",
-                request.getUsername(), request.getRole());
+        log.info("Registering new user: {}, role: {}", request.getUsername(), request.getRole());
 
         if (userRepository.existsByUsername(request.getUsername())) {
-            log.warn("Registration failed — username already taken: {}", request.getUsername());
-            throw new BadRequestException("Username already taken: " + request.getUsername());
+            log.warn("[US002] Registration failed — username taken: {}", request.getUsername());
+            throw new BadRequestException(ErrorCode.US002);
         }
         if (userRepository.existsByEmail(request.getEmail())) {
-            log.warn("Registration failed — email already registered: {}", request.getEmail());
-            throw new BadRequestException("Email already registered: " + request.getEmail());
+            log.warn("[US003] Registration failed — email registered: {}", request.getEmail());
+            throw new BadRequestException(ErrorCode.US003);
         }
 
         Role role = request.getRole() != null ? request.getRole() : Role.CASHIER;
@@ -69,7 +69,7 @@ public class AuthService {
 
         userRepository.save(user);
         String token = jwtTokenProvider.generateToken(user);
-        log.info("User registered successfully — username: {}, role: {}", user.getUsername(), role);
+        log.info("User registered — username: {}, role: {}", user.getUsername(), role);
 
         return AuthResponse.builder()
                 .token(token)
@@ -83,19 +83,19 @@ public class AuthService {
     public void changePassword(String username, ChangePasswordRequest request) {
         log.info("Password change requested by user: {}", username);
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new BadRequestException("User not found: " + username));
+                .orElseThrow(() -> new BadRequestException(ErrorCode.US001));
 
         if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
-            log.warn("Password change failed — incorrect current password for user: {}", username);
-            throw new BadRequestException("Current password is incorrect");
+            log.warn("[AU005] Password change failed — wrong current password: {}", username);
+            throw new BadRequestException(ErrorCode.AU005);
         }
         if (!request.getNewPassword().equals(request.getConfirmPassword())) {
-            log.warn("Password change failed — confirmation mismatch for user: {}", username);
-            throw new BadRequestException("New password and confirmation do not match");
+            log.warn("[AU006] Password change failed — confirmation mismatch: {}", username);
+            throw new BadRequestException(ErrorCode.AU006);
         }
         if (passwordEncoder.matches(request.getNewPassword(), user.getPassword())) {
-            log.warn("Password change failed — new password same as current for user: {}", username);
-            throw new BadRequestException("New password must be different from the current password");
+            log.warn("[AU007] Password change failed — same as current: {}", username);
+            throw new BadRequestException(ErrorCode.AU007);
         }
 
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
