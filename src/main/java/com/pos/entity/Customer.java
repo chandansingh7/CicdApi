@@ -26,8 +26,18 @@ public class Customer {
     @Column(updatable = false)
     private LocalDateTime createdAt;
 
+    private LocalDateTime updatedAt;
+
+    private String updatedBy;
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
     }
 }

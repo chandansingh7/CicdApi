@@ -35,6 +35,9 @@ dependencies {
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
 
+    // Azure Blob Storage (product image storage)
+    implementation 'com.azure:azure-storage-blob:12.27.1'
+
     // Swagger / OpenAPI
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.3.0'
 

@@ -17,6 +17,7 @@ public class InventoryResponse {
     private int lowStockThreshold;
     private String stockStatus;
     private LocalDateTime updatedAt;
+    private String updatedBy;
 
     public static InventoryResponse from(Inventory inv) {
         String status;
@@ -37,6 +38,7 @@ public class InventoryResponse {
                 .lowStockThreshold(inv.getLowStockThreshold())
                 .stockStatus(status)
                 .updatedAt(inv.getUpdatedAt())
+                .updatedBy(inv.getUpdatedBy())
                 .build();
     }
 }

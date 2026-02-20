@@ -7,6 +7,8 @@ import com.pos.exception.BadRequestException;
 import com.pos.exception.ResourceNotFoundException;
 import com.pos.repository.CategoryRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -35,6 +37,7 @@ public class CategoryService {
         Category category = Category.builder()
                 .name(request.getName())
                 .description(request.getDescription())
+                .updatedBy(currentUsername())
                 .build();
         return CategoryResponse.from(categoryRepository.save(category));
     }
@@ -48,6 +51,7 @@ public class CategoryService {
         });
         category.setName(request.getName());
         category.setDescription(request.getDescription());
+        category.setUpdatedBy(currentUsername());
         return CategoryResponse.from(categoryRepository.save(category));
     }
 
@@ -59,5 +63,10 @@ public class CategoryService {
     private Category findById(Long id) {
         return categoryRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Category", id));
+    }
+
+    private String currentUsername() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        return auth != null ? auth.getName() : "system";
     }
 }

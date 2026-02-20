@@ -21,6 +21,8 @@ public class ProductResponse {
     private boolean active;
     private int quantity;
     private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+    private String updatedBy;
 
     public static ProductResponse from(Product p, int quantity) {
         return ProductResponse.builder()
@@ -35,6 +37,8 @@ public class ProductResponse {
                 .active(p.isActive())
                 .quantity(quantity)
                 .createdAt(p.getCreatedAt())
+                .updatedAt(p.getUpdatedAt())
+                .updatedBy(p.getUpdatedBy())
                 .build();
     }
 }

@@ -13,8 +13,13 @@ import com.pos.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
 
 @Service
 @RequiredArgsConstructor
@@ -23,6 +28,7 @@ public class ProductService {
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
     private final InventoryRepository inventoryRepository;
+    private final ImageStorageService imageStorageService;
 
     public Page<ProductResponse> getAll(String search, Long categoryId, Pageable pageable) {
         if (search != null && !search.isBlank()) {
@@ -68,6 +74,7 @@ public class ProductService {
                 .category(category)
                 .imageUrl(request.getImageUrl())
                 .active(request.isActive())
+                .updatedBy(currentUsername())
                 .build();
 
         product = productRepository.save(product);
@@ -101,8 +108,13 @@ public class ProductService {
         product.setBarcode(request.getBarcode());
         product.setPrice(request.getPrice());
         product.setCategory(category);
-        product.setImageUrl(request.getImageUrl());
+        // Only overwrite imageUrl when a non-blank value is explicitly sent;
+        // preserves any URL set by the dedicated /image upload endpoint.
+        if (request.getImageUrl() != null && !request.getImageUrl().isBlank()) {
+            product.setImageUrl(request.getImageUrl());
+        }
         product.setActive(request.isActive());
+        product.setUpdatedBy(currentUsername());
 
         return toResponse(productRepository.save(product));
     }
@@ -113,9 +125,34 @@ public class ProductService {
         productRepository.save(product);
     }
 
+    @Transactional
+    public ProductResponse uploadImage(Long id, MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new BadRequestException("Image file is required");
+        }
+        String contentType = file.getContentType();
+        if (contentType == null || !contentType.startsWith("image/")) {
+            throw new BadRequestException("File must be an image (JPEG, PNG, GIF or WebP)");
+        }
+        Product product = findById(id);
+        try {
+            String imageUrl = imageStorageService.store(id, file);
+            product.setImageUrl(imageUrl);
+            product.setUpdatedBy(currentUsername());
+            return toResponse(productRepository.save(product));
+        } catch (IOException ex) {
+            throw new RuntimeException("Failed to store image: " + ex.getMessage(), ex);
+        }
+    }
+
     private Product findById(Long id) {
         return productRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Product", id));
+    }
+
+    private String currentUsername() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        return auth != null ? auth.getName() : "system";
     }
 
     private ProductResponse toResponse(Product product) {

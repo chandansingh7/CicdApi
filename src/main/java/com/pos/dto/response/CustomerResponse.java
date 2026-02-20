@@ -14,6 +14,8 @@ public class CustomerResponse {
     private String email;
     private String phone;
     private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+    private String updatedBy;
 
     public static CustomerResponse from(Customer c) {
         return CustomerResponse.builder()
@@ -22,6 +24,8 @@ public class CustomerResponse {
                 .email(c.getEmail())
                 .phone(c.getPhone())
                 .createdAt(c.getCreatedAt())
+                .updatedAt(c.getUpdatedAt())
+                .updatedBy(c.getUpdatedBy())
                 .build();
     }
 }

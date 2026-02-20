@@ -3,6 +3,8 @@ package com.pos.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDateTime;
+
 @Entity
 @Table(name = "categories")
 @Getter @Setter @Builder
@@ -17,4 +19,14 @@ public class Category {
     private String name;
 
     private String description;
+
+    private LocalDateTime updatedAt;
+
+    private String updatedBy;
+
+    @PrePersist
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
 }

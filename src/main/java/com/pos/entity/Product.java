@@ -42,6 +42,8 @@ public class Product {
 
     private LocalDateTime updatedAt;
 
+    private String updatedBy;
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();

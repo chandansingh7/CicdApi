@@ -9,6 +9,8 @@ import com.pos.repository.CustomerRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -36,6 +38,7 @@ public class CustomerService {
                 .name(request.getName())
                 .email(request.getEmail())
                 .phone(request.getPhone())
+                .updatedBy(currentUsername())
                 .build();
         return CustomerResponse.from(customerRepository.save(customer));
     }
@@ -52,6 +55,7 @@ public class CustomerService {
         customer.setName(request.getName());
         customer.setEmail(request.getEmail());
         customer.setPhone(request.getPhone());
+        customer.setUpdatedBy(currentUsername());
         return CustomerResponse.from(customerRepository.save(customer));
     }
 
@@ -63,5 +67,10 @@ public class CustomerService {
     private Customer findById(Long id) {
         return customerRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Customer", id));
+    }
+
+    private String currentUsername() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        return auth != null ? auth.getName() : "system";
     }
 }

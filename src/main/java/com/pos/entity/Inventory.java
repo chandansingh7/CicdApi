@@ -27,6 +27,8 @@ public class Inventory {
 
     private LocalDateTime updatedAt;
 
+    private String updatedBy;
+
     @PrePersist
     @PreUpdate
     protected void onUpdate() {
