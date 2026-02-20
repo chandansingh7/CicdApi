@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+  <!--
+    DelayingShutdownHook keeps Logback alive until Spring finishes its
+    shutdown sequence, preventing NoClassDefFoundError on SIGTERM.
+  -->
+  <shutdownHook class="ch.qos.logback.core.hook.DelayingShutdownHook">
+    <delay>2000</delay>
+  </shutdownHook>
+
+  <!-- Properties sourced from application.properties / env vars -->
+  <springProperty scope="context" name="LOG_LEVEL"    source="logging.level.com.pos"    defaultValue="INFO"/>
+  <springProperty scope="context" name="LOG_FILE_DIR" source="log.file.dir"              defaultValue="./logs"/>
+  <springProperty scope="context" name="APP_NAME"     source="spring.application.name"   defaultValue="cicdpos"/>
+
+  <!-- ── Patterns ─────────────────────────────────────────────────────── -->
+  <property name="LOG_PATTERN"
+            value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [%X{requestId:--}] [%X{user:-anonymous}] %-5level %logger{36} - %msg%n"/>
+
+  <!-- ── Console appender (always on) ─────────────────────────────────── -->
+  <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder>
+      <pattern>${LOG_PATTERN}</pattern>
+      <charset>UTF-8</charset>
+    </encoder>
+  </appender>
+
+  <!-- ── Rolling file appender ─────────────────────────────────────────
+       Writes to: {LOG_FILE_DIR}/cicdpos.log
+       Rolls daily to: {LOG_FILE_DIR}/archive/cicdpos.yyyy-MM-dd.log
+       Keeps 30 rolled files; caps total size at 1 GB.
+       On Azure App Service set LOG_FILE_DIR=/home/LogFiles/Application
+       so logs land on persistent Azure Files storage.
+  -->
+  <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <file>${LOG_FILE_DIR}/${APP_NAME}.log</file>
+
+    <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+      <!-- Pattern produces: logs/archive/cicdpos.2026-02-20.log -->
+      <fileNamePattern>${LOG_FILE_DIR}/archive/${APP_NAME}.%d{yyyy-MM-dd}.log</fileNamePattern>
+      <maxHistory>30</maxHistory>
+      <totalSizeCap>1GB</totalSizeCap>
+    </rollingPolicy>
+
+    <encoder>
+      <pattern>${LOG_PATTERN}</pattern>
+      <charset>UTF-8</charset>
+    </encoder>
+  </appender>
+
+  <!-- Wrap FILE in an async appender so disk I/O never blocks request threads -->
+  <appender name="ASYNC_FILE" class="ch.qos.logback.classic.AsyncAppender">
+    <queueSize>1024</queueSize>
+    <discardingThreshold>0</discardingThreshold>
+    <includeCallerData>false</includeCallerData>
+    <appender-ref ref="FILE"/>
+  </appender>
+
+  <!-- ── Application loggers ──────────────────────────────────────────── -->
+  <logger name="com.pos" level="${LOG_LEVEL}" additivity="false">
+    <appender-ref ref="CONSOLE"/>
+    <appender-ref ref="ASYNC_FILE"/>
+  </logger>
+
+  <!-- ── Suppress noisy framework loggers ─────────────────────────────── -->
+  <logger name="org.hibernate"                level="WARN"/>
+  <logger name="org.hibernate.SQL"            level="OFF"/>
+  <logger name="org.hibernate.type"           level="WARN"/>
+  <logger name="org.hibernate.orm.jdbc"       level="WARN"/>
+  <logger name="com.zaxxer.hikari"            level="WARN"/>
+  <logger name="org.springframework.web"      level="WARN"/>
+  <logger name="org.springframework.security" level="WARN"/>
+  <logger name="com.azure"                    level="WARN"/>
+  <logger name="reactor.netty"                level="WARN"/>
+
+  <!-- ── Root: WARN to both sinks ─────────────────────────────────────── -->
+  <root level="WARN">
+    <appender-ref ref="CONSOLE"/>
+    <appender-ref ref="ASYNC_FILE"/>
+  </root>
+
+</configuration>
