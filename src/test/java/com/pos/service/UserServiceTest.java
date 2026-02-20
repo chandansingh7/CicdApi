@@ -130,7 +130,7 @@ class UserServiceTest {
 
         assertThatThrownBy(() -> userService.updateProfile("cashier", req))
                 .isInstanceOf(BadRequestException.class)
-                .hasMessageContaining("already in use");
+                .hasMessageContaining("already registered");
 
         verify(userRepository, never()).save(any());
     }
