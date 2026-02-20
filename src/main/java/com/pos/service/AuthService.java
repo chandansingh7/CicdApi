@@ -4,6 +4,7 @@ import com.pos.dto.request.LoginRequest;
 import com.pos.dto.request.RegisterRequest;
 import com.pos.dto.response.AuthResponse;
 import com.pos.entity.User;
+import com.pos.enums.Role;
 import com.pos.exception.BadRequestException;
 import com.pos.repository.UserRepository;
 import com.pos.security.JwtTokenProvider;
@@ -47,11 +48,13 @@ public class AuthService {
             throw new BadRequestException("Email already registered: " + request.getEmail());
         }
 
+        Role role = request.getRole() != null ? request.getRole() : Role.CASHIER;
+
         User user = User.builder()
                 .username(request.getUsername())
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
-                .role(request.getRole())
+                .role(role)
                 .active(true)
                 .build();
 

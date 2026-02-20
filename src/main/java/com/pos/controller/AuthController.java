@@ -24,7 +24,6 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<ApiResponse<AuthResponse>> register(@Valid @RequestBody RegisterRequest request) {
         return ResponseEntity.ok(ApiResponse.ok("User registered successfully", authService.register(request)));
     }

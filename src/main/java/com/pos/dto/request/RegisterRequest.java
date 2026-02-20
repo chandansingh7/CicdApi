@@ -3,7 +3,6 @@ package com.pos.dto.request;
 import com.pos.enums.Role;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
@@ -21,6 +20,7 @@ public class RegisterRequest {
     @Size(min = 6, message = "Password must be at least 6 characters")
     private String password;
 
-    @NotNull(message = "Role is required")
+    // Optional — defaults to CASHIER for public self-registration.
+    // Admin panel sets explicit roles when creating staff accounts.
     private Role role;
 }
