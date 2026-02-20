@@ -1,5 +1,6 @@
 package com.pos.service;
 
+import com.pos.dto.request.ChangePasswordRequest;
 import com.pos.dto.request.LoginRequest;
 import com.pos.dto.request.RegisterRequest;
 import com.pos.dto.response.AuthResponse;
@@ -38,6 +39,24 @@ public class AuthService {
                 .email(user.getEmail())
                 .role(user.getRole())
                 .build();
+    }
+
+    public void changePassword(String username, ChangePasswordRequest request) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new BadRequestException("User not found: " + username));
+
+        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
+            throw new BadRequestException("Current password is incorrect");
+        }
+        if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+            throw new BadRequestException("New password and confirmation do not match");
+        }
+        if (passwordEncoder.matches(request.getNewPassword(), user.getPassword())) {
+            throw new BadRequestException("New password must be different from the current password");
+        }
+
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
     }
 
     public AuthResponse register(RegisterRequest request) {
