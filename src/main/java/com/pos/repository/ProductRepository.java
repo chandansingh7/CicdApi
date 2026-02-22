@@ -11,6 +11,9 @@ import java.util.List;
 import java.util.Optional;
 
 public interface ProductRepository extends JpaRepository<Product, Long> {
+
+    @Query("SELECT p.sku FROM Product p WHERE p.sku IN :skus")
+    List<String> findSkusBySkuIn(@Param("skus") List<String> skus);
     Optional<Product> findByBarcode(String barcode);
     Optional<Product> findBySku(String sku);
     boolean existsBySku(String sku);

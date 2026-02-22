@@ -10,6 +10,7 @@ public class CompanyRequest {
     private String name;
 
     private String logoUrl;
+    private String faviconUrl;
     private String address;
     private String phone;
     private String email;

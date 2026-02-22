@@ -102,6 +102,12 @@ public class ProductController {
                 .body(body);
     }
 
+    @PostMapping("/bulk-check")
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'MANAGER')")
+    public ResponseEntity<ApiResponse<java.util.List<String>>> bulkCheckSkus(@RequestBody java.util.List<String> skus) {
+        return ResponseEntity.ok(ApiResponse.ok(productBulkService.findExistingSkus(skus)));
+    }
+
     @PostMapping(value = "/bulk-upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasAnyAuthority('ADMIN', 'MANAGER')")
     public ResponseEntity<ApiResponse<BulkUploadResult>> bulkUpload(

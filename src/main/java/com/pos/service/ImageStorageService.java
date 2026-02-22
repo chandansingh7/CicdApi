@@ -82,6 +82,34 @@ public class ImageStorageService {
     }
 
     /**
+     * Stores a company asset (logo or favicon) and returns its public URL.
+     *
+     * @param type "logo" or "favicon"
+     * @param file the uploaded multipart file
+     * @return public URL to access the stored image
+     */
+    public String storeCompanyFile(String type, MultipartFile file) throws IOException {
+        String ext = getExtension(file.getOriginalFilename());
+        String filename = type + ext;
+
+        if (isAzureConfigured() && containerClient != null) {
+            return storeCompanyInAzure(filename, file);
+        }
+        return storeLocally(filename, file);
+    }
+
+    private String storeCompanyInAzure(String filename, MultipartFile file) throws IOException {
+        String blobName = "company/" + filename;
+        try (InputStream in = file.getInputStream()) {
+            containerClient.getBlobClient(blobName)
+                    .upload(in, file.getSize(), true);
+        }
+        String url = containerClient.getBlobContainerUrl() + "/" + blobName;
+        log.debug("Stored company file in Azure Blob: {}", url);
+        return url;
+    }
+
+    /**
      * Stores the given file and returns its public URL.
      *
      * @param productId the product the image belongs to

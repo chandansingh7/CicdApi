@@ -8,6 +8,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
 
 @Slf4j
 @Service
@@ -15,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class CompanyService {
 
     private final CompanyRepository companyRepository;
+    private final ImageStorageService imageStorageService;
 
     public CompanyResponse get() {
         Company company = companyRepository.findFirstByOrderByIdAsc().orElse(null);
@@ -30,6 +34,7 @@ public class CompanyService {
         });
         company.setName(request.getName());
         company.setLogoUrl(request.getLogoUrl());
+        company.setFaviconUrl(request.getFaviconUrl());
         company.setAddress(request.getAddress());
         company.setPhone(request.getPhone());
         company.setEmail(request.getEmail());
@@ -41,6 +46,36 @@ public class CompanyService {
         company.setUpdatedBy(updatedBy);
         company = companyRepository.save(company);
         log.info("Company settings updated by {}", updatedBy);
+        return CompanyResponse.from(company);
+    }
+
+    @Transactional
+    public CompanyResponse uploadLogo(MultipartFile file, String updatedBy) throws IOException {
+        Company company = companyRepository.findFirstByOrderByIdAsc().orElseGet(() -> {
+            Company newCompany = new Company();
+            newCompany.setName("My Store");
+            return companyRepository.save(newCompany);
+        });
+        String url = imageStorageService.storeCompanyFile("logo", file);
+        company.setLogoUrl(url);
+        company.setUpdatedBy(updatedBy);
+        company = companyRepository.save(company);
+        log.info("Company logo updated by {}", updatedBy);
+        return CompanyResponse.from(company);
+    }
+
+    @Transactional
+    public CompanyResponse uploadFavicon(MultipartFile file, String updatedBy) throws IOException {
+        Company company = companyRepository.findFirstByOrderByIdAsc().orElseGet(() -> {
+            Company newCompany = new Company();
+            newCompany.setName("My Store");
+            return companyRepository.save(newCompany);
+        });
+        String url = imageStorageService.storeCompanyFile("favicon", file);
+        company.setFaviconUrl(url);
+        company.setUpdatedBy(updatedBy);
+        company = companyRepository.save(company);
+        log.info("Company favicon updated by {}", updatedBy);
         return CompanyResponse.from(company);
     }
 }

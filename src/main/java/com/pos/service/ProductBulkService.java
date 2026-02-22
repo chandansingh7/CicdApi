@@ -24,6 +24,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -68,6 +69,7 @@ public class ProductBulkService {
     private BulkUploadResult processExcel(InputStream is, String updatedBy) throws Exception {
         List<BulkUploadResult.RowError> errors = new ArrayList<>();
         int successCount = 0;
+        int updatedCount = 0;
         int totalRows = 0;
 
         Workbook workbook = WorkbookFactory.create(is);
@@ -80,6 +82,7 @@ public class ProductBulkService {
             return BulkUploadResult.builder()
                     .totalRows(0)
                     .successCount(0)
+                    .updatedCount(0)
                     .failCount(1)
                     .errors(List.of(BulkUploadResult.RowError.builder()
                             .row(1)
@@ -98,13 +101,19 @@ public class ProductBulkService {
             RowResult rowResult = mapRowToProduct(row, r + 1, errors, updatedBy);
             if (rowResult != null) {
                 try {
-                    Product product = productRepository.save(rowResult.product);
-                    inventoryRepository.save(Inventory.builder()
-                            .product(product)
-                            .quantity(rowResult.initialStock)
-                            .lowStockThreshold(rowResult.lowStockThreshold)
-                            .build());
-                    successCount++;
+                    if (rowResult.isUpdate() && rowResult.existingInventory() != null) {
+                        productRepository.save(rowResult.product());
+                        inventoryRepository.save(rowResult.existingInventory());
+                        updatedCount++;
+                    } else {
+                        Product product = productRepository.save(rowResult.product());
+                        inventoryRepository.save(Inventory.builder()
+                                .product(product)
+                                .quantity(rowResult.initialStock())
+                                .lowStockThreshold(rowResult.lowStockThreshold())
+                                .build());
+                        successCount++;
+                    }
                 } catch (Exception e) {
                     log.warn("Bulk upload row {} save failed: {}", r + 1, e.getMessage());
                     errors.add(BulkUploadResult.RowError.builder()
@@ -119,6 +128,7 @@ public class ProductBulkService {
         return BulkUploadResult.builder()
                 .totalRows(totalRows)
                 .successCount(successCount)
+                .updatedCount(updatedCount)
                 .failCount(errors.size())
                 .errors(errors)
                 .build();
@@ -127,6 +137,7 @@ public class ProductBulkService {
     private BulkUploadResult processCsv(InputStream is, String updatedBy) {
         List<BulkUploadResult.RowError> errors = new ArrayList<>();
         int successCount = 0;
+        int updatedCount = 0;
         int totalRows = 0;
 
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
@@ -144,13 +155,19 @@ public class ProductBulkService {
                 RowResult rowResult = mapCsvRowToProduct(cells, rowNum + 1, errors, updatedBy);
                 if (rowResult != null) {
                     try {
-                        Product product = productRepository.save(rowResult.product);
-                        inventoryRepository.save(Inventory.builder()
-                                .product(product)
-                                .quantity(rowResult.initialStock)
-                                .lowStockThreshold(rowResult.lowStockThreshold)
-                                .build());
-                        successCount++;
+                        if (rowResult.isUpdate() && rowResult.existingInventory() != null) {
+                            productRepository.save(rowResult.product());
+                            inventoryRepository.save(rowResult.existingInventory());
+                            updatedCount++;
+                        } else {
+                            Product product = productRepository.save(rowResult.product());
+                            inventoryRepository.save(Inventory.builder()
+                                    .product(product)
+                                    .quantity(rowResult.initialStock())
+                                    .lowStockThreshold(rowResult.lowStockThreshold())
+                                    .build());
+                            successCount++;
+                        }
                     } catch (Exception e) {
                         log.warn("Bulk upload CSV row {} save failed: {}", rowNum + 1, e.getMessage());
                         errors.add(BulkUploadResult.RowError.builder()
@@ -174,6 +191,7 @@ public class ProductBulkService {
         return BulkUploadResult.builder()
                 .totalRows(totalRows)
                 .successCount(successCount)
+                .updatedCount(updatedCount)
                 .failCount(errors.size())
                 .errors(errors)
                 .build();
@@ -276,9 +294,24 @@ public class ProductBulkService {
         int initialStock = getCellInt(row.getCell(COL_INITIAL_STOCK), 0);
         int lowStockThreshold = getCellInt(row.getCell(COL_LOW_STOCK_THRESHOLD), 10);
 
-        if (sku != null && !sku.isBlank() && productRepository.existsBySku(sku)) {
-            errors.add(BulkUploadResult.RowError.builder().row(rowNum).field("SKU").message("SKU already exists: " + sku).build());
-            return null;
+        if (sku != null && !sku.isBlank()) {
+            Optional<Product> existingOpt = productRepository.findBySku(sku.trim());
+            if (existingOpt.isPresent()) {
+                Product existing = existingOpt.get();
+                existing.setName(name.trim());
+                existing.setBarcode(barcode != null && !barcode.isBlank() ? barcode.trim() : null);
+                existing.setPrice(price);
+                existing.setCategory(category);
+                existing.setUpdatedBy(updatedBy);
+                Optional<Inventory> invOpt = inventoryRepository.findByProductId(existing.getId());
+                if (invOpt.isPresent()) {
+                    Inventory inv = invOpt.get();
+                    inv.setQuantity(initialStock);
+                    inv.setLowStockThreshold(lowStockThreshold);
+                    inv.setUpdatedBy(updatedBy);
+                    return new RowResult(existing, initialStock, lowStockThreshold, true, inv);
+                }
+            }
         }
         if (barcode != null && !barcode.isBlank() && productRepository.existsByBarcode(barcode)) {
             errors.add(BulkUploadResult.RowError.builder().row(rowNum).field("Barcode").message("Barcode already exists: " + barcode).build());
@@ -386,5 +419,21 @@ public class ProductBulkService {
         return (header + "\n" + example).getBytes(StandardCharsets.UTF_8);
     }
 
-    private record RowResult(Product product, int initialStock, int lowStockThreshold) {}
+    /** Returns which of the given SKUs already exist (non-null, non-blank only). */
+    public List<String> findExistingSkus(List<String> skus) {
+        if (skus == null || skus.isEmpty()) return List.of();
+        List<String> toCheck = skus.stream()
+                .filter(s -> s != null && !s.isBlank())
+                .map(String::trim)
+                .distinct()
+                .collect(Collectors.toList());
+        if (toCheck.isEmpty()) return List.of();
+        return productRepository.findSkusBySkuIn(toCheck);
+    }
+
+    private record RowResult(Product product, int initialStock, int lowStockThreshold, boolean isUpdate, Inventory existingInventory) {
+        RowResult(Product product, int initialStock, int lowStockThreshold) {
+            this(product, initialStock, lowStockThreshold, false, null);
+        }
+    }
 }

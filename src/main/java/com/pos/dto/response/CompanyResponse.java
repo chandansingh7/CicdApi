@@ -11,6 +11,7 @@ public class CompanyResponse {
     private Long id;
     private String name;
     private String logoUrl;
+    private String faviconUrl;
     private String address;
     private String phone;
     private String email;
@@ -26,6 +27,7 @@ public class CompanyResponse {
                 .id(c.getId())
                 .name(c.getName())
                 .logoUrl(c.getLogoUrl())
+                .faviconUrl(c.getFaviconUrl())
                 .address(c.getAddress())
                 .phone(c.getPhone())
                 .email(c.getEmail())

@@ -27,6 +27,8 @@ public class Company {
 
     private String logoUrl;
 
+    private String faviconUrl;
+
     private String address;
 
     private String phone;

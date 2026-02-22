@@ -10,6 +10,7 @@ import java.util.List;
 public class BulkUploadResult {
     private int totalRows;
     private int successCount;
+    private int updatedCount;
     private int failCount;
     private List<RowError> errors;
 
