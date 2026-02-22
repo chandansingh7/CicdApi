@@ -73,6 +73,11 @@ public class CategoryService {
         log.info("Category id: {} deleted", id);
     }
 
+    public com.pos.dto.response.CountStats getStats() {
+        log.debug("Fetching category stats");
+        return new com.pos.dto.response.CountStats(categoryRepository.count());
+    }
+
     private Category findById(Long id) {
         return categoryRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.CT001));

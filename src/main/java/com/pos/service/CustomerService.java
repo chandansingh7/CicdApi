@@ -77,6 +77,11 @@ public class CustomerService {
         log.info("Customer id: {} deleted", id);
     }
 
+    public com.pos.dto.response.CountStats getStats() {
+        log.debug("Fetching customer stats");
+        return new com.pos.dto.response.CountStats(customerRepository.count());
+    }
+
     private Customer findById(Long id) {
         return customerRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.CM001));

@@ -120,4 +120,19 @@ class ProductServiceTest {
 
         verify(productRepository).save(argThat(p -> !p.isActive()));
     }
+
+    @Test
+    void getStats_returnsAggregatedCounts() {
+        when(productRepository.count()).thenReturn(10L);
+        when(productRepository.countByActiveTrue()).thenReturn(7L);
+        when(productRepository.countByActiveFalse()).thenReturn(3L);
+        when(inventoryRepository.countOutOfStock()).thenReturn(2L);
+
+        var stats = productService.getStats();
+
+        assertThat(stats.total()).isEqualTo(10L);
+        assertThat(stats.active()).isEqualTo(7L);
+        assertThat(stats.inactive()).isEqualTo(3L);
+        assertThat(stats.outOfStock()).isEqualTo(2L);
+    }
 }

@@ -26,6 +26,12 @@ public class OrderController {
         return ResponseEntity.ok(ApiResponse.ok(orderService.getAll(pageable)));
     }
 
+    @GetMapping("/stats")
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'MANAGER')")
+    public ResponseEntity<ApiResponse<com.pos.dto.response.OrderStats>> getStats() {
+        return ResponseEntity.ok(ApiResponse.ok(orderService.getStats()));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<OrderResponse>> getById(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.ok(orderService.getById(id)));

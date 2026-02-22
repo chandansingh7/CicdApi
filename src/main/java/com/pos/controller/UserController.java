@@ -54,6 +54,12 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.ok(userService.getAllUsers()));
     }
 
+    @GetMapping("/stats")
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<ApiResponse<com.pos.dto.response.UserStats>> getStats() {
+        return ResponseEntity.ok(ApiResponse.ok(userService.getStats()));
+    }
+
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<ApiResponse<UserResponse>> adminUpdateUser(

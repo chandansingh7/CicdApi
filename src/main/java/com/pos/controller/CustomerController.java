@@ -27,6 +27,11 @@ public class CustomerController {
         return ResponseEntity.ok(ApiResponse.ok(customerService.getAll(search, pageable)));
     }
 
+    @GetMapping("/stats")
+    public ResponseEntity<ApiResponse<com.pos.dto.response.CountStats>> getStats() {
+        return ResponseEntity.ok(ApiResponse.ok(customerService.getStats()));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<CustomerResponse>> getById(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.ok(customerService.getById(id)));

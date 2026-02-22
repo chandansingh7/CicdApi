@@ -15,4 +15,14 @@ public interface InventoryRepository extends JpaRepository<Inventory, Long> {
 
     @Query("SELECT i FROM Inventory i WHERE i.quantity = 0")
     List<Inventory> findOutOfStockItems();
+
+    // ── Stats ──────────────────────────────────────────────────────────────────
+    @Query("SELECT COUNT(i) FROM Inventory i WHERE i.quantity > i.lowStockThreshold")
+    long countInStock();
+
+    @Query("SELECT COUNT(i) FROM Inventory i WHERE i.quantity > 0 AND i.quantity <= i.lowStockThreshold")
+    long countLowStock();
+
+    @Query("SELECT COUNT(i) FROM Inventory i WHERE i.quantity = 0")
+    long countOutOfStock();
 }

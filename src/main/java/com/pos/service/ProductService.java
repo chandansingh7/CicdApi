@@ -154,6 +154,16 @@ public class ProductService {
                 .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.CT001));
     }
 
+    public com.pos.dto.response.ProductStats getStats() {
+        log.debug("Fetching product stats");
+        return new com.pos.dto.response.ProductStats(
+                productRepository.count(),
+                productRepository.countByActiveTrue(),
+                productRepository.countByActiveFalse(),
+                inventoryRepository.countOutOfStock()
+        );
+    }
+
     private Product findById(Long id) {
         return productRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.PR001));

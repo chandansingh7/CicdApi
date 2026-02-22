@@ -61,6 +61,12 @@ public class ProductController {
         return ResponseEntity.ok(ApiResponse.ok("Product deactivated", null));
     }
 
+    @GetMapping("/stats")
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'MANAGER')")
+    public ResponseEntity<ApiResponse<com.pos.dto.response.ProductStats>> getStats() {
+        return ResponseEntity.ok(ApiResponse.ok(productService.getStats()));
+    }
+
     @PostMapping(value = "/{id}/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasAnyAuthority('ADMIN', 'MANAGER')")
     public ResponseEntity<ApiResponse<ProductResponse>> uploadImage(

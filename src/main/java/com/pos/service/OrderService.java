@@ -151,6 +151,18 @@ public class OrderService {
         return OrderResponse.from(orderRepository.save(order));
     }
 
+    public com.pos.dto.response.OrderStats getStats() {
+        log.debug("Fetching order stats");
+        return new com.pos.dto.response.OrderStats(
+                orderRepository.count(),
+                orderRepository.countByStatus(com.pos.enums.OrderStatus.COMPLETED),
+                orderRepository.countByStatus(com.pos.enums.OrderStatus.PENDING),
+                orderRepository.countByStatus(com.pos.enums.OrderStatus.CANCELLED),
+                orderRepository.countByStatus(com.pos.enums.OrderStatus.REFUNDED),
+                orderRepository.sumCompletedRevenue()
+        );
+    }
+
     private Order findById(Long id) {
         return orderRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.OR001));

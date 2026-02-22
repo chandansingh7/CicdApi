@@ -25,6 +25,11 @@ public class CategoryController {
         return ResponseEntity.ok(ApiResponse.ok(categoryService.getAll()));
     }
 
+    @GetMapping("/stats")
+    public ResponseEntity<ApiResponse<com.pos.dto.response.CountStats>> getStats() {
+        return ResponseEntity.ok(ApiResponse.ok(categoryService.getStats()));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<CategoryResponse>> getById(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.ok(categoryService.getById(id)));

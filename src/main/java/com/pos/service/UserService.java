@@ -100,6 +100,18 @@ public class UserService {
         return saved;
     }
 
+    public com.pos.dto.response.UserStats getStats() {
+        log.debug("Fetching user stats");
+        return new com.pos.dto.response.UserStats(
+                userRepository.count(),
+                userRepository.countByRole(com.pos.enums.Role.ADMIN),
+                userRepository.countByRole(com.pos.enums.Role.MANAGER),
+                userRepository.countByRole(com.pos.enums.Role.CASHIER),
+                userRepository.countByActiveTrue(),
+                userRepository.countByActiveFalse()
+        );
+    }
+
     private User findByUsername(String username) {
         return userRepository.findByUsername(username)
                 .orElseThrow(() -> new BadRequestException(ErrorCode.US001));

@@ -65,6 +65,16 @@ public class InventoryService {
         return saved;
     }
 
+    public com.pos.dto.response.InventoryStats getStats() {
+        log.debug("Fetching inventory stats");
+        return new com.pos.dto.response.InventoryStats(
+                inventoryRepository.count(),
+                inventoryRepository.countInStock(),
+                inventoryRepository.countLowStock(),
+                inventoryRepository.countOutOfStock()
+        );
+    }
+
     private String currentUsername() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         return auth != null ? auth.getName() : "system";

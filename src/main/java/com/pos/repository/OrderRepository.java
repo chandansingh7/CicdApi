@@ -22,4 +22,10 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     @Query("SELECT COALESCE(SUM(o.total), 0) FROM Order o WHERE o.status = 'COMPLETED' AND o.createdAt BETWEEN :from AND :to")
     BigDecimal sumTotalBetween(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
+
+    // ── Stats ──────────────────────────────────────────────────────────────────
+    long countByStatus(OrderStatus status);
+
+    @Query("SELECT COALESCE(SUM(o.total), 0) FROM Order o WHERE o.status = 'COMPLETED'")
+    BigDecimal sumCompletedRevenue();
 }

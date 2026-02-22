@@ -25,6 +25,12 @@ public class InventoryController {
         return ResponseEntity.ok(ApiResponse.ok(inventoryService.getAll()));
     }
 
+    @GetMapping("/stats")
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'MANAGER')")
+    public ResponseEntity<ApiResponse<com.pos.dto.response.InventoryStats>> getStats() {
+        return ResponseEntity.ok(ApiResponse.ok(inventoryService.getStats()));
+    }
+
     @GetMapping("/low-stock")
     @PreAuthorize("hasAnyAuthority('ADMIN', 'MANAGER')")
     public ResponseEntity<ApiResponse<List<InventoryResponse>>> getLowStock() {
