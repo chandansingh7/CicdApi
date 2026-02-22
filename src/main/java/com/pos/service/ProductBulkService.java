@@ -251,7 +251,7 @@ public class ProductBulkService {
                 Optional<Inventory> invOpt = inventoryRepository.findByProductId(existing.getId());
                 if (invOpt.isPresent()) {
                     Inventory inv = invOpt.get();
-                    inv.setQuantity(initialStock);
+                    inv.setQuantity(inv.getQuantity() + initialStock);
                     inv.setLowStockThreshold(lowStockThreshold);
                     inv.setUpdatedBy(updatedBy);
                     return new RowResult(existing, initialStock, lowStockThreshold, true, inv);
