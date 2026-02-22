@@ -239,9 +239,24 @@ public class ProductBulkService {
         int initialStock = parseInt(cellAt(cells, COL_INITIAL_STOCK), 0);
         int lowStockThreshold = parseInt(cellAt(cells, COL_LOW_STOCK_THRESHOLD), 10);
 
-        if (sku != null && !sku.isBlank() && productRepository.existsBySku(sku)) {
-            errors.add(BulkUploadResult.RowError.builder().row(rowNum).field("SKU").message("SKU already exists: " + sku).build());
-            return null;
+        if (sku != null && !sku.isBlank()) {
+            Optional<Product> existingOpt = productRepository.findBySku(sku.trim());
+            if (existingOpt.isPresent()) {
+                Product existing = existingOpt.get();
+                existing.setName(name.trim());
+                existing.setBarcode(barcode != null && !barcode.isBlank() ? barcode.trim() : null);
+                existing.setPrice(price);
+                existing.setCategory(category);
+                existing.setUpdatedBy(updatedBy);
+                Optional<Inventory> invOpt = inventoryRepository.findByProductId(existing.getId());
+                if (invOpt.isPresent()) {
+                    Inventory inv = invOpt.get();
+                    inv.setQuantity(initialStock);
+                    inv.setLowStockThreshold(lowStockThreshold);
+                    inv.setUpdatedBy(updatedBy);
+                    return new RowResult(existing, initialStock, lowStockThreshold, true, inv);
+                }
+            }
         }
         if (barcode != null && !barcode.isBlank() && productRepository.existsByBarcode(barcode)) {
             errors.add(BulkUploadResult.RowError.builder().row(rowNum).field("Barcode").message("Barcode already exists: " + barcode).build());
