@@ -5,6 +5,8 @@ import com.pos.dto.response.SalesReportResponse;
 import com.pos.service.ReportService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -31,5 +33,31 @@ public class ReportController {
             @RequestParam(defaultValue = "#{T(java.time.LocalDate).now().getYear()}") int year,
             @RequestParam(defaultValue = "#{T(java.time.LocalDate).now().getMonthValue()}") int month) {
         return ResponseEntity.ok(ApiResponse.ok(reportService.getMonthlySummary(year, month)));
+    }
+
+    @GetMapping(value = "/sales/daily/export", produces = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    public ResponseEntity<byte[]> exportDailyExcel(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        LocalDate target = date != null ? date : LocalDate.now();
+        byte[] body = reportService.exportDailyToExcel(target);
+        String filename = "sales-daily-" + target + ".xlsx";
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .contentLength(body.length)
+                .body(body);
+    }
+
+    @GetMapping(value = "/sales/monthly/export", produces = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    public ResponseEntity<byte[]> exportMonthlyExcel(
+            @RequestParam(defaultValue = "#{T(java.time.LocalDate).now().getYear()}") int year,
+            @RequestParam(defaultValue = "#{T(java.time.LocalDate).now().getMonthValue()}") int month) {
+        byte[] body = reportService.exportMonthlyToExcel(year, month);
+        String filename = "sales-monthly-" + year + "-" + String.format("%02d", month) + ".xlsx";
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .contentLength(body.length)
+                .body(body);
     }
 }

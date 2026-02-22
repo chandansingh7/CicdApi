@@ -43,6 +43,9 @@ dependencies {
     // Swagger / OpenAPI
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.3.0'
 
+    // Excel (Apache POI) for bulk product upload and report export
+    implementation 'org.apache.poi:poi-ooxml:5.2.5'
+
     // Test
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.security:spring-security-test'
