@@ -1,0 +1,46 @@
+package com.pos.service;
+
+import com.pos.dto.request.CompanyRequest;
+import com.pos.dto.response.CompanyResponse;
+import com.pos.entity.Company;
+import com.pos.repository.CompanyRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class CompanyService {
+
+    private final CompanyRepository companyRepository;
+
+    public CompanyResponse get() {
+        Company company = companyRepository.findFirstByOrderByIdAsc().orElse(null);
+        return CompanyResponse.from(company);
+    }
+
+    @Transactional
+    public CompanyResponse update(CompanyRequest request, String updatedBy) {
+        Company company = companyRepository.findFirstByOrderByIdAsc().orElseGet(() -> {
+            Company newCompany = new Company();
+            newCompany.setName(request.getName() != null ? request.getName() : "My Store");
+            return companyRepository.save(newCompany);
+        });
+        company.setName(request.getName());
+        company.setLogoUrl(request.getLogoUrl());
+        company.setAddress(request.getAddress());
+        company.setPhone(request.getPhone());
+        company.setEmail(request.getEmail());
+        company.setTaxId(request.getTaxId());
+        company.setWebsite(request.getWebsite());
+        company.setReceiptFooterText(request.getReceiptFooterText());
+        company.setReceiptHeaderText(request.getReceiptHeaderText());
+        company.setReceiptPaperSize(request.getReceiptPaperSize() != null ? request.getReceiptPaperSize() : "80mm");
+        company.setUpdatedBy(updatedBy);
+        company = companyRepository.save(company);
+        log.info("Company settings updated by {}", updatedBy);
+        return CompanyResponse.from(company);
+    }
+}

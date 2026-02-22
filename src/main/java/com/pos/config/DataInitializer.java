@@ -6,6 +6,7 @@ import com.pos.enums.PaymentMethod;
 import com.pos.enums.PaymentStatus;
 import com.pos.enums.Role;
 import com.pos.repository.*;
+import com.pos.entity.Company;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,6 +34,7 @@ public class DataInitializer implements ApplicationRunner {
     private final OrderRepository     orderRepository;
     private final OrderItemRepository orderItemRepository;
     private final PaymentRepository   paymentRepository;
+    private final CompanyRepository   companyRepository;
     private final PasswordEncoder     passwordEncoder;
     private final EntityManager       entityManager;
 
@@ -46,6 +48,7 @@ public class DataInitializer implements ApplicationRunner {
         List<Product>  products = seedProducts(cats);
         seedInventory(products);
         List<Customer> customers = seedCustomers();
+        seedCompany();
         seedOrdersAndPayments(users, products, customers);
 
         log.info("=== DataInitializer: done ===");
@@ -99,6 +102,25 @@ public class DataInitializer implements ApplicationRunner {
 
     private Category cat(String name, String desc) {
         return Category.builder().name(name).description(desc).build();
+    }
+
+    // ── Company (single row) ─────────────────────────────────────────────────
+
+    private void seedCompany() {
+        if (companyRepository.count() > 0) {
+            log.info("Company already seeded — skipping.");
+            return;
+        }
+        Company company = Company.builder()
+                .name("My Store")
+                .address("123 Main Street")
+                .phone("+1 234 567 8900")
+                .email("store@example.com")
+                .receiptPaperSize("80mm")
+                .receiptFooterText("Thank you for your purchase!")
+                .build();
+        companyRepository.save(company);
+        log.info("Seeded default company");
     }
 
     // ── Products ─────────────────────────────────────────────────────────────
