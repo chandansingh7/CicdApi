@@ -225,48 +225,83 @@ public class ProductBulkService {
     }
 
     private RowResult mapCsvRowToProduct(String[] cells, int rowNum, List<BulkUploadResult.RowError> errors, String updatedBy) {
-        String name = cellAt(cells, COL_NAME);
-        if (name == null || name.isBlank()) return null;
-
+        String nameCell = cellAt(cells, COL_NAME);
         String sku = cellAt(cells, COL_SKU);
-        String barcode = cellAt(cells, COL_BARCODE);
-        BigDecimal price = parseBigDecimal(cellAt(cells, COL_PRICE));
-        if (price == null || price.compareTo(BigDecimal.ZERO) < 0) {
-            errors.add(BulkUploadResult.RowError.builder().row(rowNum).field("Price").message("Invalid or missing price").build());
-            return null;
-        }
+        String barcodeCell = cellAt(cells, COL_BARCODE);
+        String priceCell = cellAt(cells, COL_PRICE);
+        BigDecimal price = parseBigDecimal(priceCell);
         Category category = resolveCategory(cellAt(cells, COL_CATEGORY));
         int initialStock = parseInt(cellAt(cells, COL_INITIAL_STOCK), 0);
         int lowStockThreshold = parseInt(cellAt(cells, COL_LOW_STOCK_THRESHOLD), 10);
 
+        // If SKU exists, treat row as an update: add quantity and only override fields that are supplied.
         if (sku != null && !sku.isBlank()) {
             Optional<Product> existingOpt = productRepository.findBySku(sku.trim());
             if (existingOpt.isPresent()) {
                 Product existing = existingOpt.get();
-                existing.setName(name.trim());
-                existing.setBarcode(barcode != null && !barcode.isBlank() ? barcode.trim() : null);
-                existing.setPrice(price);
-                existing.setCategory(category);
-                existing.setUpdatedBy(updatedBy);
-                Optional<Inventory> invOpt = inventoryRepository.findByProductId(existing.getId());
-                if (invOpt.isPresent()) {
-                    Inventory inv = invOpt.get();
-                    inv.setQuantity(inv.getQuantity() + initialStock);
-                    inv.setLowStockThreshold(lowStockThreshold);
-                    inv.setUpdatedBy(updatedBy);
-                    return new RowResult(existing, initialStock, lowStockThreshold, true, inv);
+
+                if (nameCell != null && !nameCell.isBlank()) {
+                    existing.setName(nameCell.trim());
                 }
+                if (barcodeCell != null && !barcodeCell.isBlank()) {
+                    existing.setBarcode(barcodeCell.trim());
+                }
+                if (priceCell != null && !priceCell.isBlank()) {
+                    if (price == null || price.compareTo(BigDecimal.ZERO) < 0) {
+                        errors.add(BulkUploadResult.RowError.builder()
+                                .row(rowNum)
+                                .field("Price")
+                                .message("Invalid price")
+                                .build());
+                        return null;
+                    }
+                    existing.setPrice(price);
+                }
+                if (category != null) {
+                    existing.setCategory(category);
+                }
+                existing.setUpdatedBy(updatedBy);
+
+                Optional<Inventory> invOpt = inventoryRepository.findByProductId(existing.getId());
+                Inventory inv = invOpt.orElseGet(() -> Inventory.builder()
+                        .product(existing)
+                        .quantity(0)
+                        .lowStockThreshold(lowStockThreshold)
+                        .updatedBy(updatedBy)
+                        .build());
+
+                inv.setQuantity(inv.getQuantity() + initialStock);
+                inv.setLowStockThreshold(lowStockThreshold);
+                inv.setUpdatedBy(updatedBy);
+
+                return new RowResult(existing, initialStock, lowStockThreshold, true, inv);
             }
         }
-        if (barcode != null && !barcode.isBlank() && productRepository.existsByBarcode(barcode)) {
-            errors.add(BulkUploadResult.RowError.builder().row(rowNum).field("Barcode").message("Barcode already exists: " + barcode).build());
+
+        // New product path: require name and a valid price.
+        if (nameCell == null || nameCell.isBlank()) return null;
+        if (price == null || price.compareTo(BigDecimal.ZERO) < 0) {
+            errors.add(BulkUploadResult.RowError.builder()
+                    .row(rowNum)
+                    .field("Price")
+                    .message("Invalid or missing price")
+                    .build());
+            return null;
+        }
+
+        if (barcodeCell != null && !barcodeCell.isBlank() && productRepository.existsByBarcode(barcodeCell)) {
+            errors.add(BulkUploadResult.RowError.builder()
+                    .row(rowNum)
+                    .field("Barcode")
+                    .message("Barcode already exists: " + barcodeCell)
+                    .build());
             return null;
         }
 
         Product product = Product.builder()
-                .name(name.trim())
+                .name(nameCell.trim())
                 .sku(sku != null && !sku.isBlank() ? sku.trim() : null)
-                .barcode(barcode != null && !barcode.isBlank() ? barcode.trim() : null)
+                .barcode(barcodeCell != null && !barcodeCell.isBlank() ? barcodeCell.trim() : null)
                 .price(price)
                 .category(category)
                 .active(true)
@@ -294,49 +329,82 @@ public class ProductBulkService {
     }
 
     private RowResult mapRowToProduct(Row row, int rowNum, List<BulkUploadResult.RowError> errors, String updatedBy) {
-        String name = getCellString(row.getCell(COL_NAME));
-        if (name == null || name.isBlank()) return null;
-
+        String nameCell = getCellString(row.getCell(COL_NAME));
         String sku = getCellString(row.getCell(COL_SKU));
-        String barcode = getCellString(row.getCell(COL_BARCODE));
+        String barcodeCell = getCellString(row.getCell(COL_BARCODE));
         BigDecimal price = getCellBigDecimal(row.getCell(COL_PRICE));
-        if (price == null || price.compareTo(BigDecimal.ZERO) < 0) {
-            errors.add(BulkUploadResult.RowError.builder().row(rowNum).field("Price").message("Invalid or missing price").build());
-            return null;
-        }
-
         Category category = resolveCategory(getCellString(row.getCell(COL_CATEGORY)));
         int initialStock = getCellInt(row.getCell(COL_INITIAL_STOCK), 0);
         int lowStockThreshold = getCellInt(row.getCell(COL_LOW_STOCK_THRESHOLD), 10);
 
+        // If SKU exists, treat row as an update: add quantity and only override fields that are supplied.
         if (sku != null && !sku.isBlank()) {
             Optional<Product> existingOpt = productRepository.findBySku(sku.trim());
             if (existingOpt.isPresent()) {
                 Product existing = existingOpt.get();
-                existing.setName(name.trim());
-                existing.setBarcode(barcode != null && !barcode.isBlank() ? barcode.trim() : null);
-                existing.setPrice(price);
-                existing.setCategory(category);
-                existing.setUpdatedBy(updatedBy);
-                Optional<Inventory> invOpt = inventoryRepository.findByProductId(existing.getId());
-                if (invOpt.isPresent()) {
-                    Inventory inv = invOpt.get();
-                    inv.setQuantity(inv.getQuantity() + initialStock);
-                    inv.setLowStockThreshold(lowStockThreshold);
-                    inv.setUpdatedBy(updatedBy);
-                    return new RowResult(existing, initialStock, lowStockThreshold, true, inv);
+
+                if (nameCell != null && !nameCell.isBlank()) {
+                    existing.setName(nameCell.trim());
                 }
+                if (barcodeCell != null && !barcodeCell.isBlank()) {
+                    existing.setBarcode(barcodeCell.trim());
+                }
+                if (getCellString(row.getCell(COL_PRICE)) != null && !getCellString(row.getCell(COL_PRICE)).isBlank()) {
+                    if (price == null || price.compareTo(BigDecimal.ZERO) < 0) {
+                        errors.add(BulkUploadResult.RowError.builder()
+                                .row(rowNum)
+                                .field("Price")
+                                .message("Invalid price")
+                                .build());
+                        return null;
+                    }
+                    existing.setPrice(price);
+                }
+                if (category != null) {
+                    existing.setCategory(category);
+                }
+                existing.setUpdatedBy(updatedBy);
+
+                Optional<Inventory> invOpt = inventoryRepository.findByProductId(existing.getId());
+                Inventory inv = invOpt.orElseGet(() -> Inventory.builder()
+                        .product(existing)
+                        .quantity(0)
+                        .lowStockThreshold(lowStockThreshold)
+                        .updatedBy(updatedBy)
+                        .build());
+
+                inv.setQuantity(inv.getQuantity() + initialStock);
+                inv.setLowStockThreshold(lowStockThreshold);
+                inv.setUpdatedBy(updatedBy);
+
+                return new RowResult(existing, initialStock, lowStockThreshold, true, inv);
             }
         }
-        if (barcode != null && !barcode.isBlank() && productRepository.existsByBarcode(barcode)) {
-            errors.add(BulkUploadResult.RowError.builder().row(rowNum).field("Barcode").message("Barcode already exists: " + barcode).build());
+
+        // New product path: require name and a valid price.
+        if (nameCell == null || nameCell.isBlank()) return null;
+        if (price == null || price.compareTo(BigDecimal.ZERO) < 0) {
+            errors.add(BulkUploadResult.RowError.builder()
+                    .row(rowNum)
+                    .field("Price")
+                    .message("Invalid or missing price")
+                    .build());
+            return null;
+        }
+
+        if (barcodeCell != null && !barcodeCell.isBlank() && productRepository.existsByBarcode(barcodeCell)) {
+            errors.add(BulkUploadResult.RowError.builder()
+                    .row(rowNum)
+                    .field("Barcode")
+                    .message("Barcode already exists: " + barcodeCell)
+                    .build());
             return null;
         }
 
         Product product = Product.builder()
-                .name(name.trim())
+                .name(nameCell.trim())
                 .sku(sku != null && !sku.isBlank() ? sku.trim() : null)
-                .barcode(barcode != null && !barcode.isBlank() ? barcode.trim() : null)
+                .barcode(barcodeCell != null && !barcodeCell.isBlank() ? barcodeCell.trim() : null)
                 .price(price)
                 .category(category)
                 .active(true)
