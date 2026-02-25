@@ -48,9 +48,14 @@ public class ProductBulkService {
     public BulkUploadResult processUpload(MultipartFile file, String updatedBy) {
         String name = file.getOriginalFilename();
         boolean isCsv = name != null && name.toLowerCase().endsWith(".csv");
+        log.info("Bulk upload started: file={}, size={} bytes, format={}, updatedBy={}",
+                name, file.getSize(), isCsv ? "CSV" : "Excel", updatedBy);
 
         try (InputStream is = file.getInputStream()) {
-            return isCsv ? processCsv(is, updatedBy) : processExcel(is, updatedBy);
+            BulkUploadResult result = isCsv ? processCsv(is, updatedBy) : processExcel(is, updatedBy);
+            log.info("Bulk upload finished: totalRows={}, successCount={}, updatedCount={}, failCount={}",
+                    result.getTotalRows(), result.getSuccessCount(), result.getUpdatedCount(), result.getFailCount());
+            return result;
         } catch (Exception e) {
             log.error("Bulk upload failed", e);
             return BulkUploadResult.builder()
@@ -68,14 +73,12 @@ public class ProductBulkService {
 
     private BulkUploadResult processExcel(InputStream is, String updatedBy) throws Exception {
         List<BulkUploadResult.RowError> errors = new ArrayList<>();
-        int successCount = 0;
-        int updatedCount = 0;
-        int totalRows = 0;
+        List<RowResult> toUpdate = new ArrayList<>();
+        List<RowResult> toCreate = new ArrayList<>();
 
         Workbook workbook = WorkbookFactory.create(is);
         Sheet sheet = workbook.getSheetAt(0);
         int lastRow = sheet.getLastRowNum();
-        totalRows = Math.max(0, lastRow);
         workbook.close();
 
         if (lastRow < 1) {
@@ -92,52 +95,42 @@ public class ProductBulkService {
                     .build();
         }
 
+        int totalRows = lastRow;
+        log.info("Bulk upload Excel: parsing {} data rows", lastRow);
         for (int r = 1; r <= lastRow; r++) {
             Row row = sheet.getRow(r);
             if (row == null) continue;
-            String nameVal = getCellString(row.getCell(COL_NAME));
-            if (nameVal == null || nameVal.isBlank()) continue;
+            if (!excelRowHasAnyValue(row)) continue;
 
             RowResult rowResult = mapRowToProduct(row, r + 1, errors, updatedBy);
             if (rowResult != null) {
-                try {
-                    if (rowResult.isUpdate() && rowResult.existingInventory() != null) {
-                        productRepository.save(rowResult.product());
-                        inventoryRepository.save(rowResult.existingInventory());
-                        updatedCount++;
-                    } else {
-                        Product product = productRepository.save(rowResult.product());
-                        inventoryRepository.save(Inventory.builder()
-                                .product(product)
-                                .quantity(rowResult.initialStock())
-                                .lowStockThreshold(rowResult.lowStockThreshold())
-                                .build());
-                        successCount++;
-                    }
-                } catch (Exception e) {
-                    log.warn("Bulk upload row {} save failed: {}", r + 1, e.getMessage());
-                    errors.add(BulkUploadResult.RowError.builder()
-                            .row(r + 1)
-                            .field("save")
-                            .message(e.getMessage())
-                            .build());
+                if (rowResult.isUpdate() && rowResult.existingInventory() != null) {
+                    toUpdate.add(rowResult);
+                } else {
+                    toCreate.add(rowResult);
                 }
             }
         }
+        log.info("Bulk upload Excel: parsed toUpdate={}, toCreate={}, mappingErrors={}",
+                toUpdate.size(), toCreate.size(), errors.size());
 
-        return BulkUploadResult.builder()
-                .totalRows(totalRows)
-                .successCount(successCount)
-                .updatedCount(updatedCount)
-                .failCount(errors.size())
-                .errors(errors)
-                .build();
+        return flushBatches(toUpdate, toCreate, totalRows, errors);
     }
+
+    private static boolean excelRowHasAnyValue(Row row) {
+        for (int c = 0; c <= COL_LOW_STOCK_THRESHOLD; c++) {
+            String v = getCellString(row.getCell(c));
+            if (v != null && !v.isBlank()) return true;
+        }
+        return false;
+    }
+
+    private static final int SAVE_BATCH_SIZE = 50;
 
     private BulkUploadResult processCsv(InputStream is, String updatedBy) {
         List<BulkUploadResult.RowError> errors = new ArrayList<>();
-        int successCount = 0;
-        int updatedCount = 0;
+        List<RowResult> toUpdate = new ArrayList<>();
+        List<RowResult> toCreate = new ArrayList<>();
         int totalRows = 0;
 
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
@@ -148,37 +141,21 @@ public class ProductBulkService {
                 rowNum++;
                 if (line.isBlank()) continue;
                 String[] cells = parseCsvLine(line);
-                if (cells.length <= COL_NAME) continue;
-                String nameVal = cellAt(cells, COL_NAME);
-                if (nameVal == null || nameVal.isBlank()) continue;
+                if (cells.length == 0) continue;
+                if (!rowHasAnyValue(cells)) continue;
 
                 RowResult rowResult = mapCsvRowToProduct(cells, rowNum + 1, errors, updatedBy);
                 if (rowResult != null) {
-                    try {
-                        if (rowResult.isUpdate() && rowResult.existingInventory() != null) {
-                            productRepository.save(rowResult.product());
-                            inventoryRepository.save(rowResult.existingInventory());
-                            updatedCount++;
-                        } else {
-                            Product product = productRepository.save(rowResult.product());
-                            inventoryRepository.save(Inventory.builder()
-                                    .product(product)
-                                    .quantity(rowResult.initialStock())
-                                    .lowStockThreshold(rowResult.lowStockThreshold())
-                                    .build());
-                            successCount++;
-                        }
-                    } catch (Exception e) {
-                        log.warn("Bulk upload CSV row {} save failed: {}", rowNum + 1, e.getMessage());
-                        errors.add(BulkUploadResult.RowError.builder()
-                                .row(rowNum + 1)
-                                .field("save")
-                                .message(e.getMessage())
-                                .build());
+                    if (rowResult.isUpdate() && rowResult.existingInventory() != null) {
+                        toUpdate.add(rowResult);
+                    } else {
+                        toCreate.add(rowResult);
                     }
                 }
                 totalRows = rowNum;
             }
+            log.info("Bulk upload CSV: parsed totalRows={}, toUpdate={}, toCreate={}, mappingErrors={}",
+                    totalRows, toUpdate.size(), toCreate.size(), errors.size());
         } catch (Exception e) {
             log.error("CSV parse failed", e);
             errors.add(BulkUploadResult.RowError.builder()
@@ -186,12 +163,79 @@ public class ProductBulkService {
                     .field("file")
                     .message("Failed to read CSV: " + e.getMessage())
                     .build());
+            return BulkUploadResult.builder()
+                    .totalRows(totalRows)
+                    .successCount(0)
+                    .updatedCount(0)
+                    .failCount(errors.size())
+                    .errors(errors)
+                    .build();
+        }
+
+        return flushBatches(toUpdate, toCreate, totalRows, errors);
+    }
+
+    private static boolean rowHasAnyValue(String[] cells) {
+        for (String c : cells) {
+            if (c != null && !c.isBlank()) return true;
+        }
+        return false;
+    }
+
+    private BulkUploadResult flushBatches(List<RowResult> toUpdate, List<RowResult> toCreate,
+                                          int totalRows, List<BulkUploadResult.RowError> errors) {
+        log.info("Bulk upload flush: toUpdate={}, toCreate={}, batchSize={}", toUpdate.size(), toCreate.size(), SAVE_BATCH_SIZE);
+        if (!toUpdate.isEmpty()) {
+            String sampleUpdateSkus = toUpdate.stream().map(RowResult::product).limit(5)
+                    .map(p -> p.getSku() != null ? p.getSku() : "(no SKU)").toList().toString();
+            log.info("Bulk upload saving updates (sample SKUs): {}", sampleUpdateSkus);
+        }
+        if (!toCreate.isEmpty()) {
+            String sampleCreateSkus = toCreate.stream().map(RowResult::product).limit(5)
+                    .map(p -> p.getSku() != null ? p.getSku() : "(no SKU)").toList().toString();
+            log.info("Bulk upload saving new products (sample SKUs): {}", sampleCreateSkus);
+        }
+        try {
+            for (int i = 0; i < toUpdate.size(); i += SAVE_BATCH_SIZE) {
+                int end = Math.min(i + SAVE_BATCH_SIZE, toUpdate.size());
+                List<RowResult> chunk = toUpdate.subList(i, end);
+                List<Product> products = chunk.stream().map(RowResult::product).toList();
+                List<Inventory> inventories = chunk.stream().map(RowResult::existingInventory).toList();
+                productRepository.saveAll(products);
+                inventoryRepository.saveAll(inventories);
+                log.debug("Bulk upload: saved update batch rows {}-{} ({} products, {} inventories)", i + 1, end, products.size(), inventories.size());
+            }
+            for (int i = 0; i < toCreate.size(); i += SAVE_BATCH_SIZE) {
+                int end = Math.min(i + SAVE_BATCH_SIZE, toCreate.size());
+                List<RowResult> createChunk = toCreate.subList(i, end);
+                List<Product> newProducts = createChunk.stream().map(RowResult::product).toList();
+                List<Product> saved = productRepository.saveAll(newProducts);
+                List<Inventory> newInventories = new ArrayList<>(saved.size());
+                for (int j = 0; j < saved.size(); j++) {
+                    RowResult r = createChunk.get(j);
+                    newInventories.add(Inventory.builder()
+                            .product(saved.get(j))
+                            .quantity(r.initialStock())
+                            .lowStockThreshold(r.lowStockThreshold())
+                            .build());
+                }
+                inventoryRepository.saveAll(newInventories);
+                log.debug("Bulk upload: saved create batch rows {}-{} ({} products, {} inventories)", i + 1, end, saved.size(), newInventories.size());
+            }
+            log.info("Bulk upload flush done: saved {} updates, {} creates", toUpdate.size(), toCreate.size());
+        } catch (Exception e) {
+            log.warn("Bulk save failed: {}", e.getMessage());
+            errors.add(BulkUploadResult.RowError.builder()
+                    .row(0)
+                    .field("save")
+                    .message("Bulk save failed: " + e.getMessage())
+                    .build());
         }
 
         return BulkUploadResult.builder()
                 .totalRows(totalRows)
-                .successCount(successCount)
-                .updatedCount(updatedCount)
+                .successCount(toCreate.size())
+                .updatedCount(toUpdate.size())
                 .failCount(errors.size())
                 .errors(errors)
                 .build();
