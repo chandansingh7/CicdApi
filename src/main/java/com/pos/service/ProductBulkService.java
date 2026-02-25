@@ -21,6 +21,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -305,6 +306,7 @@ public class ProductBulkService {
                     existing.setCategory(category);
                 }
                 existing.setUpdatedBy(updatedBy);
+                existing.setUpdatedAt(LocalDateTime.now());
 
                 Optional<Inventory> invOpt = inventoryRepository.findByProductId(existing.getId());
                 Inventory inv = invOpt.orElseGet(() -> Inventory.builder()
@@ -408,6 +410,7 @@ public class ProductBulkService {
                     existing.setCategory(category);
                 }
                 existing.setUpdatedBy(updatedBy);
+                existing.setUpdatedAt(LocalDateTime.now());
 
                 Optional<Inventory> invOpt = inventoryRepository.findByProductId(existing.getId());
                 Inventory inv = invOpt.orElseGet(() -> Inventory.builder()
