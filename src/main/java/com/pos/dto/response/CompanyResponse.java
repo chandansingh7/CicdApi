@@ -4,6 +4,8 @@ import com.pos.entity.Company;
 import lombok.Builder;
 import lombok.Data;
 
+import java.time.LocalDateTime;
+
 @Data
 @Builder
 public class CompanyResponse {
@@ -20,6 +22,7 @@ public class CompanyResponse {
     private String receiptFooterText;
     private String receiptPaperSize;
     private String receiptHeaderText;
+    private LocalDateTime updatedAt;
 
     public static CompanyResponse from(Company c) {
         if (c == null) return null;
@@ -36,6 +39,7 @@ public class CompanyResponse {
                 .receiptFooterText(c.getReceiptFooterText())
                 .receiptPaperSize(c.getReceiptPaperSize())
                 .receiptHeaderText(c.getReceiptHeaderText())
+                .updatedAt(c.getUpdatedAt())
                 .build();
     }
 }
