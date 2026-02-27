@@ -6,6 +6,8 @@ import com.pos.dto.response.CategoryResponse;
 import com.pos.service.CategoryService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -21,8 +23,14 @@ public class CategoryController {
     private final CategoryService categoryService;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<CategoryResponse>>> getAll() {
-        return ResponseEntity.ok(ApiResponse.ok(categoryService.getAll()));
+    public ResponseEntity<ApiResponse<Page<CategoryResponse>>> getAll(Pageable pageable) {
+        return ResponseEntity.ok(ApiResponse.ok(categoryService.getAll(pageable)));
+    }
+
+    /** For dropdowns (e.g. product form); returns up to 500 categories. */
+    @GetMapping("/list")
+    public ResponseEntity<ApiResponse<List<CategoryResponse>>> getList() {
+        return ResponseEntity.ok(ApiResponse.ok(categoryService.getList()));
     }
 
     @GetMapping("/stats")

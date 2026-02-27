@@ -13,6 +13,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 
@@ -51,11 +54,14 @@ class InventoryServiceTest {
     }
 
     @Test
-    void getAll_returnsMappedList() {
-        when(inventoryRepository.findAll()).thenReturn(List.of(inventory));
-        List<InventoryResponse> result = inventoryService.getAll();
-        assertThat(result).hasSize(1);
-        assertThat(result.get(0).getQuantity()).isEqualTo(25);
+    void getAll_returnsPaginatedList() {
+        Pageable pageable = PageRequest.of(0, 10);
+        when(inventoryRepository.findAllWithProduct(any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(inventory), pageable, 1));
+        var result = inventoryService.getAll(pageable);
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getContent().get(0).getQuantity()).isEqualTo(25);
+        assertThat(result.getTotalElements()).isEqualTo(1);
     }
 
     @Test

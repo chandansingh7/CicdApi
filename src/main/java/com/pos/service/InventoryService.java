@@ -9,6 +9,8 @@ import com.pos.repository.InventoryRepository;
 import com.pos.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -24,11 +26,9 @@ public class InventoryService {
     private final InventoryRepository inventoryRepository;
     private final ProductRepository   productRepository;
 
-    public List<InventoryResponse> getAll() {
-        log.debug("Fetching all inventory records");
-        return inventoryRepository.findAll().stream()
-                .map(InventoryResponse::from)
-                .collect(Collectors.toList());
+    public Page<InventoryResponse> getAll(Pageable pageable) {
+        log.debug("Fetching inventory page: {}", pageable);
+        return inventoryRepository.findAllWithProduct(pageable).map(InventoryResponse::from);
     }
 
     public List<InventoryResponse> getLowStock() {

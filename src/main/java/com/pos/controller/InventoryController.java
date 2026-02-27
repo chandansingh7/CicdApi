@@ -6,6 +6,8 @@ import com.pos.dto.response.InventoryResponse;
 import com.pos.service.InventoryService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -21,8 +23,8 @@ public class InventoryController {
 
     @GetMapping
     @PreAuthorize("hasAnyAuthority('ADMIN', 'MANAGER')")
-    public ResponseEntity<ApiResponse<List<InventoryResponse>>> getAll() {
-        return ResponseEntity.ok(ApiResponse.ok(inventoryService.getAll()));
+    public ResponseEntity<ApiResponse<Page<InventoryResponse>>> getAll(Pageable pageable) {
+        return ResponseEntity.ok(ApiResponse.ok(inventoryService.getAll(pageable)));
     }
 
     @GetMapping("/stats")

@@ -12,6 +12,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 
@@ -42,12 +45,15 @@ class CategoryServiceTest {
     }
 
     @Test
-    void getAll_returnsMappedList() {
-        when(categoryRepository.findAll()).thenReturn(List.of(category));
-        List<CategoryResponse> result = categoryService.getAll();
-        assertThat(result).hasSize(1);
-        assertThat(result.get(0).getName()).isEqualTo("Electronics");
-        assertThat(result.get(0).getId()).isEqualTo(1L);
+    void getAll_returnsPaginatedList() {
+        Pageable pageable = PageRequest.of(0, 10);
+        when(categoryRepository.findAll(any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(category), pageable, 1));
+        var result = categoryService.getAll(pageable);
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getContent().get(0).getName()).isEqualTo("Electronics");
+        assertThat(result.getContent().get(0).getId()).isEqualTo(1L);
+        assertThat(result.getTotalElements()).isEqualTo(1);
     }
 
     @Test

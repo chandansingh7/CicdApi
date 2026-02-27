@@ -10,6 +10,8 @@ import com.pos.repository.CategoryRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
@@ -23,11 +25,16 @@ public class CategoryService {
 
     private final CategoryRepository categoryRepository;
 
-    public List<CategoryResponse> getAll() {
-        log.debug("Fetching all categories");
-        return categoryRepository.findAll().stream()
-                .map(CategoryResponse::from)
-                .collect(Collectors.toList());
+    public Page<CategoryResponse> getAll(Pageable pageable) {
+        log.debug("Fetching categories page: {}", pageable);
+        return categoryRepository.findAll(pageable).map(CategoryResponse::from);
+    }
+
+    /** For dropdowns and small-list use; returns up to 500 categories. */
+    public List<CategoryResponse> getList() {
+        log.debug("Fetching category list for dropdown");
+        return categoryRepository.findAll(org.springframework.data.domain.PageRequest.of(0, 500))
+                .map(CategoryResponse::from).getContent();
     }
 
     public CategoryResponse getById(Long id) {
