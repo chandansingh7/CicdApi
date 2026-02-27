@@ -15,6 +15,10 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+
 import java.util.List;
 import java.util.Optional;
 
@@ -43,15 +47,18 @@ class UserServiceTest {
     // ── getAllUsers ───────────────────────────────────────────────────────────
 
     @Test
-    @DisplayName("getAllUsers returns all users mapped to DTOs")
-    void getAllUsers_returnsMappedList() {
-        when(userRepository.findAll()).thenReturn(List.of(admin, cashier));
+    @DisplayName("getAllUsers returns paginated users mapped to DTOs")
+    void getAllUsers_returnsPaginatedList() {
+        Pageable pageable = PageRequest.of(0, 10);
+        when(userRepository.findAll(any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(admin, cashier), pageable, 2));
 
-        List<UserResponse> result = userService.getAllUsers();
+        var result = userService.getAllUsers(pageable);
 
-        assertThat(result).hasSize(2);
-        assertThat(result).extracting(UserResponse::getUsername)
+        assertThat(result.getContent()).hasSize(2);
+        assertThat(result.getContent()).extracting(UserResponse::getUsername)
                 .containsExactlyInAnyOrder("admin", "cashier");
+        assertThat(result.getTotalElements()).isEqualTo(2);
     }
 
     // ── getProfile ────────────────────────────────────────────────────────────
