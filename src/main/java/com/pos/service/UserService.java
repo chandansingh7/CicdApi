@@ -9,9 +9,9 @@ import com.pos.exception.ErrorCode;
 import com.pos.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-
-import java.util.List;
 
 @Slf4j
 @Service
@@ -20,13 +20,9 @@ public class UserService {
 
     private final UserRepository userRepository;
 
-    public List<UserResponse> getAllUsers() {
-        log.debug("Fetching all users");
-        List<UserResponse> users = userRepository.findAll().stream()
-                .map(UserResponse::from)
-                .toList();
-        log.debug("Returned {} users", users.size());
-        return users;
+    public Page<UserResponse> getAllUsers(Pageable pageable) {
+        log.debug("Fetching users page: {}", pageable);
+        return userRepository.findAll(pageable).map(UserResponse::from);
     }
 
     public UserResponse getProfile(String username) {
