@@ -58,6 +58,10 @@ public enum ErrorCode {
     // ── Inventory ─────────────────────────────────────────────────────────────
     IN001("IN001", "Inventory record not found for this product"),
 
+    // ── Label ─────────────────────────────────────────────────────────────────
+    LB001("LB001", "Label not found"),
+    LB002("LB002", "Barcode already exists for a label or product"),
+
     // ── Validation ────────────────────────────────────────────────────────────
     VA001("VA001", "One or more fields failed validation"),
 
