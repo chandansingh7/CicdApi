@@ -185,6 +185,48 @@ public class LabelService {
         return toProductResponse(product);
     }
 
+    /**
+     * Attach an existing label to an existing product.
+     * <p>
+     * HCI safety rules:
+     * <ul>
+     *   <li>If product has no barcode, it will be set to the label's barcode.</li>
+     *   <li>If product has the same barcode, the label is simply linked.</li>
+     *   <li>If product has a different barcode, the operation is rejected with LB002.</li>
+     * </ul>
+     */
+    @Transactional
+    public LabelResponse attachToProduct(Long labelId, Long productId) {
+        log.info("Attaching label {} to existing product {}", labelId, productId);
+        Label label = findById(labelId);
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.PR001, "id: " + productId));
+
+        if (label.getProduct() != null && !label.getProduct().getId().equals(productId)) {
+            throw new BadRequestException(ErrorCode.LB001, "Label is already linked to a different product");
+        }
+
+        String labelBarcode = label.getBarcode();
+        String productBarcode = product.getBarcode();
+
+        if (productBarcode == null || productBarcode.isBlank()) {
+            // Safe: product doesn't have a barcode yet, assign label's barcode.
+            product.setBarcode(labelBarcode);
+            productRepository.save(product);
+        } else if (!productBarcode.equals(labelBarcode)) {
+            // HCI: avoid silent mismatch between printed barcode and product.
+            log.warn("[LB002] Attach rejected — product {} already has different barcode {}", productId, productBarcode);
+            throw new BadRequestException(ErrorCode.LB002,
+                    "Product already has a different barcode: " + productBarcode);
+        }
+
+        label.setProduct(product);
+        labelRepository.save(label);
+
+        log.info("Label {} attached to product {}", labelId, productId);
+        return LabelResponse.from(label);
+    }
+
     @Transactional
     public void delete(Long id) {
         log.info("Deleting label id: {}", id);

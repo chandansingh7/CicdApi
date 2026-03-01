@@ -68,6 +68,15 @@ public class LabelController {
                 .body(ApiResponse.ok("Product created from label", labelService.addAsProduct(id, initialStock)));
     }
 
+    @PostMapping("/{id}/attach")
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'MANAGER')")
+    public ResponseEntity<ApiResponse<LabelResponse>> attachToProduct(
+            @PathVariable Long id,
+            @RequestParam Long productId) {
+        return ResponseEntity.ok(
+                ApiResponse.ok("Label attached to product", labelService.attachToProduct(id, productId)));
+    }
+
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyAuthority('ADMIN', 'MANAGER')")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {

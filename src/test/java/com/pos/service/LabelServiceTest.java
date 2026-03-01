@@ -161,4 +161,41 @@ class LabelServiceTest {
         assertThat(response.getId()).isEqualTo(10L);
         assertThat(response.getName()).isEqualTo("Wireless Earbuds");
     }
+
+    @Test
+    void attachToProduct_setsBarcodeWhenMissing() {
+        Product product = Product.builder()
+                .id(20L)
+                .name("Existing Product")
+                .price(new BigDecimal("9.99"))
+                .active(true)
+                .build(); // no barcode yet
+
+        when(labelRepository.findById(1L)).thenReturn(Optional.of(sampleLabel));
+        when(productRepository.findById(20L)).thenReturn(Optional.of(product));
+        when(labelRepository.save(any(Label.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        LabelResponse response = labelService.attachToProduct(1L, 20L);
+
+        assertThat(response.getProductId()).isEqualTo(20L);
+        assertThat(product.getBarcode()).isEqualTo(sampleLabel.getBarcode());
+        verify(productRepository).save(product);
+    }
+
+    @Test
+    void attachToProduct_differentExistingBarcode_throwsBadRequest() {
+        Product product = Product.builder()
+                .id(21L)
+                .name("Existing Product")
+                .barcode("OTHER-CODE")
+                .price(new BigDecimal("9.99"))
+                .active(true)
+                .build();
+
+        when(labelRepository.findById(1L)).thenReturn(Optional.of(sampleLabel));
+        when(productRepository.findById(21L)).thenReturn(Optional.of(product));
+
+        assertThatThrownBy(() -> labelService.attachToProduct(1L, 21L))
+                .isInstanceOf(BadRequestException.class);
+    }
 }
