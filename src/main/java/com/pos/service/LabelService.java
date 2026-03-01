@@ -22,6 +22,10 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.ThreadLocalRandom;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -55,18 +59,13 @@ public class LabelService {
 
     @Transactional
     public LabelResponse create(LabelRequest request) {
-        log.info("Creating label — barcode: '{}', name: '{}'", request.getBarcode(), request.getName());
-        if (labelRepository.existsByBarcode(request.getBarcode().trim())) {
-            throw new BadRequestException(ErrorCode.LB002);
-        }
-        if (productRepository.existsByBarcode(request.getBarcode().trim())) {
-            throw new BadRequestException(ErrorCode.LB002);
-        }
+        String barcode = resolveBarcode(request.getBarcode());
+        log.info("Creating label — barcode: '{}', name: '{}'", barcode, request.getName());
 
         Category category = resolveCategory(request.getCategoryId());
 
         Label label = Label.builder()
-                .barcode(request.getBarcode().trim())
+                .barcode(barcode)
                 .name(request.getName().trim())
                 .price(request.getPrice())
                 .sku(request.getSku() != null ? request.getSku().trim() : null)
@@ -79,6 +78,48 @@ public class LabelService {
     }
 
     @Transactional
+    public List<LabelResponse> createBulk(List<LabelRequest> requests) {
+        log.info("Bulk creating {} labels", requests != null ? requests.size() : 0);
+        List<LabelResponse> results = new ArrayList<>();
+        if (requests == null || requests.isEmpty()) {
+            return results;
+        }
+        for (LabelRequest req : requests) {
+            if (req.getName() == null || req.getName().isBlank()) continue;
+            results.add(create(req));
+        }
+        log.info("Bulk created {} labels", results.size());
+        return results;
+    }
+
+    private String resolveBarcode(String provided) {
+        String barcode = provided != null ? provided.trim() : "";
+        if (barcode.isBlank()) {
+            barcode = generateUniqueBarcode();
+        }
+        if (labelRepository.existsByBarcode(barcode) || productRepository.existsByBarcode(barcode)) {
+            throw new BadRequestException(ErrorCode.LB002);
+        }
+        return barcode;
+    }
+
+    private String generateUniqueBarcode() {
+        String candidate;
+        int attempts = 0;
+        do {
+            long base = System.currentTimeMillis() % 10_000_000_000L;
+            int suffix = ThreadLocalRandom.current().nextInt(100, 9999);
+            candidate = "LBL" + base + suffix;
+            attempts++;
+            if (attempts > 10) {
+                candidate = "LBL" + System.nanoTime() + ThreadLocalRandom.current().nextInt(100, 999);
+            }
+        } while ((labelRepository.existsByBarcode(candidate) || productRepository.existsByBarcode(candidate))
+                && attempts <= 10);
+        return candidate;
+    }
+
+    @Transactional
     public LabelResponse update(Long id, LabelRequest request) {
         log.info("Updating label id: {}", id);
         Label label = findById(id);
@@ -86,8 +127,10 @@ public class LabelService {
             throw new BadRequestException(ErrorCode.LB001, "Cannot edit a label that is linked to a product");
         }
 
-        String newBarcode = request.getBarcode().trim();
-        if (!newBarcode.equals(label.getBarcode())) {
+        String newBarcode = request.getBarcode() != null ? request.getBarcode().trim() : "";
+        if (newBarcode.isBlank()) {
+            newBarcode = label.getBarcode();
+        } else if (!newBarcode.equals(label.getBarcode())) {
             if (labelRepository.existsByBarcode(newBarcode) || productRepository.existsByBarcode(newBarcode)) {
                 throw new BadRequestException(ErrorCode.LB002);
             }

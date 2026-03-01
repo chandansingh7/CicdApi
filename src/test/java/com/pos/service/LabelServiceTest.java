@@ -97,6 +97,28 @@ class LabelServiceTest {
     }
 
     @Test
+    void create_blankBarcode_autoGenerates() {
+        LabelRequest request = new LabelRequest();
+        request.setBarcode("");
+        request.setName("Auto Label");
+        request.setPrice(new BigDecimal("9.99"));
+
+        when(labelRepository.existsByBarcode(anyString())).thenReturn(false);
+        when(productRepository.existsByBarcode(anyString())).thenReturn(false);
+        when(labelRepository.save(any(Label.class))).thenAnswer(inv -> {
+            Label l = inv.getArgument(0);
+            l.setId(2L);
+            return l;
+        });
+
+        LabelResponse response = labelService.create(request);
+
+        assertThat(response.getName()).isEqualTo("Auto Label");
+        assertThat(response.getBarcode()).isNotBlank();
+        assertThat(response.getBarcode()).startsWith("LBL");
+    }
+
+    @Test
     void getById_existingLabel_returnsResponse() {
         when(labelRepository.findById(1L)).thenReturn(Optional.of(sampleLabel));
 

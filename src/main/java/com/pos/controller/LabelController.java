@@ -43,6 +43,14 @@ public class LabelController {
                 .body(ApiResponse.ok("Label created", labelService.create(request)));
     }
 
+    @PostMapping("/bulk")
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'MANAGER')")
+    public ResponseEntity<ApiResponse<java.util.List<LabelResponse>>> createBulk(
+            @Valid @RequestBody java.util.List<LabelRequest> requests) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.ok("Labels created", labelService.createBulk(requests)));
+    }
+
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyAuthority('ADMIN', 'MANAGER')")
     public ResponseEntity<ApiResponse<LabelResponse>> update(

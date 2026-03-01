@@ -10,7 +10,7 @@ import java.math.BigDecimal;
 @Data
 public class LabelRequest {
 
-    @NotBlank(message = "Barcode is required")
+    /** Optional. When blank, a unique barcode is auto-generated. */
     private String barcode;
 
     @NotBlank(message = "Name is required")
