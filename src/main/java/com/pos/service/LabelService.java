@@ -192,12 +192,18 @@ public class LabelService {
      * <ul>
      *   <li>If product has no barcode, it will be set to the label's barcode.</li>
      *   <li>If product has the same barcode, the label is simply linked.</li>
-     *   <li>If product has a different barcode, the operation is rejected with LB002.</li>
+     *   <li>If product has a different barcode and force = false, the operation is rejected with LB002.</li>
+     *   <li>If product has a different barcode and force = true, the product barcode is overwritten with the label's barcode.</li>
      * </ul>
      */
     @Transactional
     public LabelResponse attachToProduct(Long labelId, Long productId) {
-        log.info("Attaching label {} to existing product {}", labelId, productId);
+        return attachToProduct(labelId, productId, false);
+    }
+
+    @Transactional
+    public LabelResponse attachToProduct(Long labelId, Long productId, boolean force) {
+        log.info("Attaching label {} to existing product {} (force={})", labelId, productId, force);
         Label label = findById(labelId);
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.PR001, "id: " + productId));
@@ -214,10 +220,15 @@ public class LabelService {
             product.setBarcode(labelBarcode);
             productRepository.save(product);
         } else if (!productBarcode.equals(labelBarcode)) {
-            // HCI: avoid silent mismatch between printed barcode and product.
-            log.warn("[LB002] Attach rejected — product {} already has different barcode {}", productId, productBarcode);
-            throw new BadRequestException(ErrorCode.LB002,
-                    "Product already has a different barcode: " + productBarcode);
+            if (!force) {
+                // HCI: avoid silent mismatch between printed barcode and product unless explicitly confirmed.
+                log.warn("[LB002] Attach rejected — product {} already has different barcode {}", productId, productBarcode);
+                throw new BadRequestException(ErrorCode.LB002,
+                        "Product already has a different barcode: " + productBarcode);
+            }
+            // Explicit override requested: align product barcode with label barcode.
+            product.setBarcode(labelBarcode);
+            productRepository.save(product);
         }
 
         label.setProduct(product);

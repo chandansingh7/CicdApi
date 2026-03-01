@@ -72,9 +72,10 @@ public class LabelController {
     @PreAuthorize("hasAnyAuthority('ADMIN', 'MANAGER')")
     public ResponseEntity<ApiResponse<LabelResponse>> attachToProduct(
             @PathVariable Long id,
-            @RequestParam Long productId) {
+            @RequestParam Long productId,
+            @RequestParam(defaultValue = "false") boolean force) {
         return ResponseEntity.ok(
-                ApiResponse.ok("Label attached to product", labelService.attachToProduct(id, productId)));
+                ApiResponse.ok("Label attached to product", labelService.attachToProduct(id, productId, force)));
     }
 
     @DeleteMapping("/{id}")

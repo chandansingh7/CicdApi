@@ -198,4 +198,25 @@ class LabelServiceTest {
         assertThatThrownBy(() -> labelService.attachToProduct(1L, 21L))
                 .isInstanceOf(BadRequestException.class);
     }
+
+    @Test
+    void attachToProduct_forceOverride_overwritesBarcode() {
+        Product product = Product.builder()
+                .id(22L)
+                .name("Existing Product")
+                .barcode("OTHER-CODE")
+                .price(new BigDecimal("9.99"))
+                .active(true)
+                .build();
+
+        when(labelRepository.findById(1L)).thenReturn(Optional.of(sampleLabel));
+        when(productRepository.findById(22L)).thenReturn(Optional.of(product));
+        when(labelRepository.save(any(Label.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        LabelResponse response = labelService.attachToProduct(1L, 22L, true);
+
+        assertThat(response.getProductId()).isEqualTo(22L);
+        assertThat(product.getBarcode()).isEqualTo(sampleLabel.getBarcode());
+        verify(productRepository).save(product);
+    }
 }
