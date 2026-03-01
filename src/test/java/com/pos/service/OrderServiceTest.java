@@ -115,12 +115,13 @@ class OrderServiceTest {
         });
         when(orderItemRepository.saveAll(any())).thenAnswer(inv -> inv.getArgument(0));
         when(paymentRepository.save(any(Payment.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(inventoryRepository.saveAll(any())).thenAnswer(inv -> inv.getArgument(0));
 
         OrderResponse response = orderService.create(request);
 
         assertThat(response).isNotNull();
         verify(orderRepository).save(any(Order.class));
-        verify(inventoryRepository).save(inventory);
+        verify(inventoryRepository).saveAll(any());
         assertThat(inventory.getQuantity()).isEqualTo(98);
     }
 
