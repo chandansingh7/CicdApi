@@ -63,8 +63,9 @@ public class OrderService {
                     .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.CM001));
         }
 
-        List<OrderItem> items    = new ArrayList<>();
-        BigDecimal      subtotal = BigDecimal.ZERO;
+        List<OrderItem> items           = new ArrayList<>();
+        List<Inventory> inventoriesToSave = new ArrayList<>();
+        BigDecimal      subtotal       = BigDecimal.ZERO;
 
         for (OrderItemRequest itemReq : request.getItems()) {
             Product product = productRepository.findById(itemReq.getProductId())
@@ -93,8 +94,10 @@ public class OrderService {
 
             subtotal = subtotal.add(itemSubtotal);
             inventory.setQuantity(inventory.getQuantity() - itemReq.getQuantity());
-            inventoryRepository.save(inventory);
+            inventoriesToSave.add(inventory);
         }
+
+        inventoryRepository.saveAll(inventoriesToSave);
 
         BigDecimal discount     = request.getDiscount() != null ? request.getDiscount() : BigDecimal.ZERO;
         BigDecimal afterDiscount = subtotal.subtract(discount).max(BigDecimal.ZERO);
