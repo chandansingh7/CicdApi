@@ -21,4 +21,10 @@ public class CompanyRequest {
 
     /** Receipt paper size: 58mm, 80mm, A4 */
     private String receiptPaperSize;
+
+    /** Display currency code (e.g. USD, INR, EUR) */
+    private String displayCurrency;
+
+    /** Locale for formatting (e.g. en-US, hi-IN) */
+    private String locale;
 }

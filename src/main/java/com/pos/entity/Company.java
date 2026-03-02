@@ -49,6 +49,14 @@ public class Company {
     /** Optional custom header line on receipts */
     private String receiptHeaderText;
 
+    /** Display currency code for prices and reports (e.g. USD, INR, EUR). Default USD. */
+    @Column(name = "display_currency", length = 6)
+    private String displayCurrency;
+
+    /** Locale for number/date formatting (e.g. en-US, hi-IN). Affects UI formatting. */
+    @Column(length = 10)
+    private String locale;
+
     private LocalDateTime updatedAt;
 
     private String updatedBy;

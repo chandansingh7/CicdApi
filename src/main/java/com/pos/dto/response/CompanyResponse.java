@@ -22,6 +22,8 @@ public class CompanyResponse {
     private String receiptFooterText;
     private String receiptPaperSize;
     private String receiptHeaderText;
+    private String displayCurrency;
+    private String locale;
     private LocalDateTime updatedAt;
 
     public static CompanyResponse from(Company c) {
@@ -39,6 +41,8 @@ public class CompanyResponse {
                 .receiptFooterText(c.getReceiptFooterText())
                 .receiptPaperSize(c.getReceiptPaperSize())
                 .receiptHeaderText(c.getReceiptHeaderText())
+                .displayCurrency(c.getDisplayCurrency())
+                .locale(c.getLocale())
                 .updatedAt(c.getUpdatedAt())
                 .build();
     }
