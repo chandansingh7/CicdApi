@@ -23,7 +23,7 @@ public class Customer {
 
     private String phone;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "integer not null default 0")
     @Builder.Default
     private Integer rewardPoints = 0;
 
