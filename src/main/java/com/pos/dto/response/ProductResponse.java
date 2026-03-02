@@ -14,6 +14,8 @@ public class ProductResponse {
     private String name;
     private String sku;
     private String barcode;
+    private String size;
+    private String color;
     private BigDecimal price;
     private Long categoryId;
     private String categoryName;
@@ -30,6 +32,8 @@ public class ProductResponse {
                 .name(p.getName())
                 .sku(p.getSku())
                 .barcode(p.getBarcode())
+                .size(p.getSize())
+                .color(p.getColor())
                 .price(p.getPrice())
                 .categoryId(p.getCategory() != null ? p.getCategory().getId() : null)
                 .categoryName(p.getCategory() != null ? p.getCategory().getName() : null)

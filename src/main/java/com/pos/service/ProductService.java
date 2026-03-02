@@ -73,6 +73,8 @@ public class ProductService {
                 .name(request.getName())
                 .sku(request.getSku())
                 .barcode(request.getBarcode())
+                .size(request.getSize())
+                .color(request.getColor())
                 .price(request.getPrice())
                 .category(category)
                 .imageUrl(request.getImageUrl())
@@ -106,6 +108,8 @@ public class ProductService {
         product.setName(request.getName());
         product.setSku(request.getSku());
         product.setBarcode(request.getBarcode());
+        product.setSize(request.getSize());
+        product.setColor(request.getColor());
         product.setPrice(request.getPrice());
         product.setCategory(category);
         if (request.getImageUrl() != null && !request.getImageUrl().isBlank()) {

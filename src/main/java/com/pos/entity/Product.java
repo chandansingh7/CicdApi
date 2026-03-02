@@ -25,6 +25,12 @@ public class Product {
     @Column(unique = true)
     private String barcode;
 
+    /** Optional size variant, e.g. S, M, L, 42. */
+    private String size;
+
+    /** Optional color variant, e.g. Red, Blue, Black. */
+    private String color;
+
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal price;
 

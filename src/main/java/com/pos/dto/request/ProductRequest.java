@@ -22,6 +22,12 @@ public class ProductRequest {
     private Long categoryId;
     private String imageUrl;
 
+    /** Optional size variant, e.g. S, M, L, 42. */
+    private String size;
+
+    /** Optional color variant, e.g. Red, Blue, Black. */
+    private String color;
+
     private boolean active = true;
     private int initialStock = 0;
     private int lowStockThreshold = 10;
