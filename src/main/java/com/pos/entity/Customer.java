@@ -27,6 +27,10 @@ public class Customer {
     @Builder.Default
     private Integer rewardPoints = 0;
 
+    /** Unique barcode for member card; set when a card is created for this customer. Scannable at checkout. */
+    @Column(unique = true)
+    private String memberCardBarcode;
+
     @Column(updatable = false)
     private LocalDateTime createdAt;
 

@@ -37,6 +37,16 @@ public class CustomerController {
         return ResponseEntity.ok(ApiResponse.ok(customerService.getById(id)));
     }
 
+    @GetMapping("/by-card/{barcode}")
+    public ResponseEntity<ApiResponse<CustomerResponse>> getByMemberCard(@PathVariable String barcode) {
+        return ResponseEntity.ok(ApiResponse.ok(customerService.findByMemberCardBarcode(barcode)));
+    }
+
+    @PostMapping("/{id}/member-card")
+    public ResponseEntity<ApiResponse<CustomerResponse>> createMemberCard(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.ok("Member card created", customerService.createMemberCard(id)));
+    }
+
     @PostMapping
     public ResponseEntity<ApiResponse<CustomerResponse>> create(@Valid @RequestBody CustomerRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)

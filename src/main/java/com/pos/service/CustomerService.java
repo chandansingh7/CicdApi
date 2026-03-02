@@ -82,6 +82,35 @@ public class CustomerService {
         return new com.pos.dto.response.CountStats(customerRepository.count());
     }
 
+    /**
+     * Create a member card for the customer: assign a unique barcode (MC + zero-padded id).
+     * Idempotent: if customer already has a card, returns current customer with existing barcode.
+     */
+    public CustomerResponse createMemberCard(Long id) {
+        log.info("Creating member card for customer id: {}", id);
+        Customer customer = findById(id);
+        if (customer.getMemberCardBarcode() != null && !customer.getMemberCardBarcode().isBlank()) {
+            log.debug("Customer {} already has member card: {}", id, customer.getMemberCardBarcode());
+            return CustomerResponse.from(customer);
+        }
+        String barcode = "MC" + String.format("%010d", customer.getId());
+        customer.setMemberCardBarcode(barcode);
+        customer.setUpdatedBy(currentUsername());
+        customerRepository.save(customer);
+        log.info("Member card created — customer id: {}, barcode: {}", id, barcode);
+        return CustomerResponse.from(customer);
+    }
+
+    /**
+     * Look up customer by member card barcode (for POS scan at checkout).
+     */
+    public CustomerResponse findByMemberCardBarcode(String barcode) {
+        log.debug("Looking up customer by member card barcode: {}", barcode);
+        return customerRepository.findByMemberCardBarcode(barcode != null ? barcode.trim() : "")
+                .map(CustomerResponse::from)
+                .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.CM001));
+    }
+
     private Customer findById(Long id) {
         return customerRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.CM001));
