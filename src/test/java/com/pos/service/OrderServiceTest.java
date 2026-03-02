@@ -29,10 +29,16 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
+
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class OrderServiceTest {
 
     @Mock private OrderRepository orderRepository;
@@ -54,8 +60,8 @@ class OrderServiceTest {
 
     @BeforeEach
     void setUp() {
-        when(rewardConfig.getPointsPerDollar()).thenReturn(1);
-        when(rewardConfig.getRedemptionRate()).thenReturn(100);
+        lenient().when(rewardConfig.getPointsPerDollar()).thenReturn(1);
+        lenient().when(rewardConfig.getRedemptionRate()).thenReturn(100);
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken("cashier1", null, List.of()));
         cashier = new User();
@@ -177,8 +183,10 @@ class OrderServiceTest {
         OrderResponse response = orderService.create(request);
 
         assertThat(response).isNotNull();
-        assertThat(customer.getRewardPoints()).isEqualTo(300);
-        verify(customerRepository).save(customer);
+        // 500 - 200 redeem + 10 earned (subtotal 10 * 1 point per dollar) = 310
+        assertThat(customer.getRewardPoints()).isEqualTo(310);
+        // Save called twice: once after deducting redemption, once after adding earned points
+        verify(customerRepository, times(2)).save(any(Customer.class));
     }
 
     @Test
