@@ -1,5 +1,6 @@
 package com.pos.service;
 
+import com.pos.config.RewardConfig;
 import com.pos.dto.request.OrderItemRequest;
 import com.pos.dto.request.OrderRequest;
 import com.pos.dto.response.OrderResponse;
@@ -41,6 +42,7 @@ class OrderServiceTest {
     @Mock private CustomerRepository customerRepository;
     @Mock private UserRepository userRepository;
     @Mock private PaymentRepository paymentRepository;
+    @Mock private RewardConfig rewardConfig;
 
     @InjectMocks
     private OrderService orderService;
@@ -52,6 +54,8 @@ class OrderServiceTest {
 
     @BeforeEach
     void setUp() {
+        when(rewardConfig.getPointsPerDollar()).thenReturn(1);
+        when(rewardConfig.getRedemptionRate()).thenReturn(100);
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken("cashier1", null, List.of()));
         cashier = new User();
@@ -141,6 +145,62 @@ class OrderServiceTest {
 
         assertThatThrownBy(() -> orderService.create(request))
                 .isInstanceOf(BadRequestException.class);
+    }
+
+    @Test
+    void create_withCustomerAndPointsToRedeem_deductsPointsAndAppliesDiscount() {
+        Customer customer = Customer.builder().id(1L).name("Jane").rewardPoints(500).build();
+        OrderItemRequest itemReq = new OrderItemRequest();
+        itemReq.setProductId(10L);
+        itemReq.setQuantity(1);
+        OrderRequest request = new OrderRequest();
+        request.setCustomerId(1L);
+        request.setItems(List.of(itemReq));
+        request.setPaymentMethod(PaymentMethod.CASH);
+        request.setDiscount(BigDecimal.ZERO);
+        request.setPointsToRedeem(200);
+
+        when(userRepository.findByUsername("cashier1")).thenReturn(Optional.of(cashier));
+        when(customerRepository.findById(1L)).thenReturn(Optional.of(customer));
+        when(productRepository.findById(10L)).thenReturn(Optional.of(product));
+        when(inventoryRepository.findByProductId(10L)).thenReturn(Optional.of(inventory));
+        when(orderRepository.save(any(Order.class))).thenAnswer(inv -> {
+            Order o = inv.getArgument(0);
+            o.setId(2L);
+            return o;
+        });
+        when(orderItemRepository.saveAll(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(paymentRepository.save(any(Payment.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(inventoryRepository.saveAll(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(customerRepository.save(any(Customer.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        OrderResponse response = orderService.create(request);
+
+        assertThat(response).isNotNull();
+        assertThat(customer.getRewardPoints()).isEqualTo(300);
+        verify(customerRepository).save(customer);
+    }
+
+    @Test
+    void create_pointsToRedeemExceedsBalance_throwsBadRequest() {
+        Customer customer = Customer.builder().id(1L).name("Jane").rewardPoints(50).build();
+        OrderItemRequest itemReq = new OrderItemRequest();
+        itemReq.setProductId(10L);
+        itemReq.setQuantity(1);
+        OrderRequest request = new OrderRequest();
+        request.setCustomerId(1L);
+        request.setItems(List.of(itemReq));
+        request.setPaymentMethod(PaymentMethod.CASH);
+        request.setPointsToRedeem(100);
+
+        when(userRepository.findByUsername("cashier1")).thenReturn(Optional.of(cashier));
+        when(customerRepository.findById(1L)).thenReturn(Optional.of(customer));
+        when(productRepository.findById(10L)).thenReturn(Optional.of(product));
+        when(inventoryRepository.findByProductId(10L)).thenReturn(Optional.of(inventory));
+
+        assertThatThrownBy(() -> orderService.create(request))
+                .isInstanceOf(BadRequestException.class);
+        assertThat(customer.getRewardPoints()).isEqualTo(50);
     }
 
     @Test

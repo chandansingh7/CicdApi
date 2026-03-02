@@ -1,5 +1,6 @@
 package com.pos.service;
 
+import com.pos.config.RewardConfig;
 import com.pos.dto.request.OrderItemRequest;
 import com.pos.dto.request.OrderRequest;
 import com.pos.dto.response.OrderResponse;
@@ -37,6 +38,7 @@ public class OrderService {
     private final CustomerRepository  customerRepository;
     private final UserRepository      userRepository;
     private final PaymentRepository   paymentRepository;
+    private final RewardConfig        rewardConfig;
 
     public Page<OrderResponse> getAll(Pageable pageable) {
         log.debug("Fetching orders — page: {}", pageable.getPageNumber());
@@ -61,6 +63,22 @@ public class OrderService {
         if (request.getCustomerId() != null) {
             customer = customerRepository.findById(request.getCustomerId())
                     .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.CM001));
+        }
+
+        BigDecimal discount = request.getDiscount() != null ? request.getDiscount() : BigDecimal.ZERO;
+        Integer pointsToRedeem = request.getPointsToRedeem();
+        if (customer != null && pointsToRedeem != null && pointsToRedeem > 0) {
+            int balance = customer.getRewardPoints() != null ? customer.getRewardPoints() : 0;
+            if (balance < pointsToRedeem) {
+                log.warn("[RW001] Insufficient reward points: has {}, requested {}", balance, pointsToRedeem);
+                throw new BadRequestException(ErrorCode.RW001);
+            }
+            int rate = rewardConfig.getRedemptionRate();
+            if (rate <= 0) rate = 100;
+            BigDecimal redemptionDollars = BigDecimal.valueOf(pointsToRedeem).divide(BigDecimal.valueOf(rate), 2, RoundingMode.DOWN);
+            discount = discount.add(redemptionDollars);
+            customer.setRewardPoints(balance - pointsToRedeem);
+            customerRepository.save(customer);
         }
 
         List<OrderItem> items           = new ArrayList<>();
@@ -99,7 +117,6 @@ public class OrderService {
 
         inventoryRepository.saveAll(inventoriesToSave);
 
-        BigDecimal discount     = request.getDiscount() != null ? request.getDiscount() : BigDecimal.ZERO;
         BigDecimal afterDiscount = subtotal.subtract(discount).max(BigDecimal.ZERO);
         BigDecimal tax          = afterDiscount.multiply(TAX_RATE).setScale(2, RoundingMode.HALF_UP);
         BigDecimal total        = afterDiscount.add(tax).setScale(2, RoundingMode.HALF_UP);
@@ -118,6 +135,19 @@ public class OrderService {
         paymentRepository.save(Payment.builder()
                 .order(order).method(request.getPaymentMethod())
                 .amount(total).status(PaymentStatus.COMPLETED).build());
+
+        if (customer != null) {
+            int pointsPerDollar = rewardConfig.getPointsPerDollar();
+            if (pointsPerDollar > 0) {
+                int earned = subtotal.multiply(BigDecimal.valueOf(pointsPerDollar)).intValue();
+                if (earned > 0) {
+                    int current = customer.getRewardPoints() != null ? customer.getRewardPoints() : 0;
+                    customer.setRewardPoints(current + earned);
+                    customerRepository.save(customer);
+                    log.info("Order id: {} — customer {} earned {} reward points", order.getId(), customer.getId(), earned);
+                }
+            }
+        }
 
         log.info("Order created — id: {}, total: {}", order.getId(), total);
         return OrderResponse.from(order);

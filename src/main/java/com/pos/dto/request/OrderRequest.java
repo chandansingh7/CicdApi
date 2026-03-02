@@ -21,4 +21,7 @@ public class OrderRequest {
     private PaymentMethod paymentMethod;
 
     private BigDecimal discount = BigDecimal.ZERO;
+
+    /** Points to redeem for this order (requires customerId). Discount applied = pointsToRedeem / redemptionRate dollars. */
+    private Integer pointsToRedeem;
 }

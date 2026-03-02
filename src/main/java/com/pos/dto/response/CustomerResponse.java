@@ -13,6 +13,7 @@ public class CustomerResponse {
     private String name;
     private String email;
     private String phone;
+    private Integer rewardPoints;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private String updatedBy;
@@ -23,6 +24,7 @@ public class CustomerResponse {
                 .name(c.getName())
                 .email(c.getEmail())
                 .phone(c.getPhone())
+                .rewardPoints(c.getRewardPoints() != null ? c.getRewardPoints() : 0)
                 .createdAt(c.getCreatedAt())
                 .updatedAt(c.getUpdatedAt())
                 .updatedBy(c.getUpdatedBy())

@@ -62,6 +62,9 @@ public enum ErrorCode {
     LB001("LB001", "Label not found"),
     LB002("LB002", "Barcode already exists for a label or product"),
 
+    // ── Member rewards ───────────────────────────────────────────────────────
+    RW001("RW001", "Insufficient reward points for redemption"),
+
     // ── Validation ────────────────────────────────────────────────────────────
     VA001("VA001", "One or more fields failed validation"),
 

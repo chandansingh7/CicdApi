@@ -23,6 +23,10 @@ public class Customer {
 
     private String phone;
 
+    @Column(nullable = false)
+    @Builder.Default
+    private Integer rewardPoints = 0;
+
     @Column(updatable = false)
     private LocalDateTime createdAt;
 
