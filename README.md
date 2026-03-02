@@ -1,119 +1,47 @@
-# POS System - CI/CD Demo
+# pos-mono-api
 
-A simple Point of Sale (POS) system built with Java and Gradle, featuring CI/CD pipeline with GitHub Actions.
-
-## Features
-
-- Product management
-- Shopping cart functionality
-- Checkout process
-- Inventory management
-- Unit tests with JUnit 5
-- CI/CD pipeline with GitHub Actions
+Spring Boot 3 REST API for CicdPOS: products, categories, inventory, orders, labels, auth (JWT). Uses PostgreSQL and optional Azure Blob Storage for images.
 
 ## Prerequisites
 
-- Java 11 or higher
-- No Gradle installation required - the project includes Gradle Wrapper (`gradlew`)
+- **Java 21**
+- **PostgreSQL 14+** (local or Docker)
+- Gradle Wrapper included (`./gradlew`)
 
-## Project Structure
+## Quick start
 
-```
-CicdApi/
-├── src/
-│   ├── main/
-│   │   └── java/
-│   │       └── com/
-│   │           └── pos/
-│   │               ├── Product.java
-│   │               ├── CartItem.java
-│   │               ├── Cart.java
-│   │               ├── POSSystem.java
-│   │               └── POSApplication.java
-│   └── test/
-│       └── java/
-│           └── com/
-│               └── pos/
-│                   ├── ProductTest.java
-│                   ├── CartTest.java
-│                   └── POSSystemTest.java
-├── build.gradle
-├── settings.gradle
-├── gradlew
-├── gradlew.bat
-├── gradle/
-│   └── wrapper/
-│       └── gradle-wrapper.properties
-├── .github/
-│   └── workflows/
-│       └── ci.yml
-├── .gitignore
-└── README.md
-```
+1. **Create a database** (e.g. `cicdpos`) and set env vars (recommended; do not hardcode passwords):
 
-## Building the Project
+   ```bash
+   export DATABASE_URL="jdbc:postgresql://localhost:5432/cicdpos"
+   export DATABASE_USERNAME="postgres"
+   export DATABASE_PASSWORD="<your-password>"
+   ```
 
-```bash
-# Compile the project
-./gradlew clean compileJava
+   Optional: set `JWT_SECRET` to a strong random value. Defaults exist for local dev only.
 
-# Run tests
-./gradlew test
+2. **Run the API:**
 
-# Build the application (includes tests)
-./gradlew build
+   ```bash
+   ./gradlew bootRun
+   ```
 
-# Run the application
-./gradlew run
+   API: **http://localhost:8080**. Swagger UI: **http://localhost:8080/swagger-ui.html**
 
-# Or run the JAR directly
-java -jar target/libs/cicdpos-1.0.0.jar
-```
+## Commands
 
-## Running Tests
+| Command           | Description                |
+|-------------------|----------------------------|
+| `./gradlew bootRun` | Start API (dev profile)   |
+| `./gradlew build`   | Build + run tests         |
+| `./gradlew test`    | Run unit tests            |
 
-```bash
-./gradlew test
-```
+## Configuration
 
-## CI/CD Pipeline
+- **Profile:** `dev` (default) or `prod` via `SPRING_PROFILES_ACTIVE`.
+- **Dev:** DB and Swagger use defaults above; override with env vars.
+- **Prod:** Set `DATABASE_URL`, `DATABASE_USERNAME`, `DATABASE_PASSWORD`, `JWT_SECRET`; optionally `AZURE_STORAGE_CONNECTION_STRING`, `CORS_ORIGINS`.
 
-The project includes a GitHub Actions workflow (`.github/workflows/ci.yml`) that:
+## CI/CD
 
-1. Checks out the code
-2. Sets up JDK 11
-3. Builds the project with Gradle
-4. Runs all unit tests
-5. Uploads the JAR artifact
-6. (On `main` branch) Deploys the built artifact to Azure Web App
-
-The pipeline runs automatically on:
-- Push to `main`, `master`, or `develop` branches
-- Pull requests to `main`, `master`, or `develop` branches
-
-### Azure deployment setup (free tier)
-
-1. In the Azure Portal, create a **Free-tier App Service (Linux, Java SE)**, e.g. `cicdpos-demo-app`.
-2. In the App Service, go to **Overview → Get publish profile** and download the XML file.
-3. In your GitHub repo, go to **Settings → Secrets and variables → Actions** and add:
-   - `AZURE_WEBAPP_NAME` = your app name (e.g. `cicdpos-demo-app`)
-   - `AZURE_WEBAPP_PUBLISH_PROFILE` = contents of the publish profile XML.
-4. Push to the `main` branch; GitHub Actions will build, test, and deploy the latest JAR to your Azure Web App.
-
-## Usage Example
-
-```java
-POSSystem pos = new POSSystem();
-
-// Add items to cart
-pos.addToCart("P001", 1); // Laptop
-pos.addToCart("P002", 2); // Mouse
-
-// Checkout
-double total = pos.checkout();
-System.out.println("Total: $" + total);
-```
-
-## License
-
-This is a demo project for CI/CD purposes.
+GitHub Actions (`.github/workflows/ci.yml`) builds, tests, and deploys to Azure App Service on push to `main`. Configure repo secrets for Azure (e.g. publish profile, app name).
